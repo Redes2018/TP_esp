@@ -115,24 +115,23 @@ def ql_2_fig(ql):
     #Toma como input un valor de quarterlength y devuelve un str
     #que es la figura que le corresponde.
     #Nota: falta completar con otros valores seguramente.
-    figura='ninguna'
-    if float(ql)==4:
-        figura='redonda'
-    elif float(ql)==3:
-        figura='blanca puntillo'
-    elif float(ql)==2:
-        figura='blanca'
-    elif float(ql)==1.5:
-        figura='negra puntillo'
-    elif float(ql)==1:
-        figura='negra'
-    elif float(ql)==0.5:
-        figura='corchea'
-    elif float(ql)==0.25:
-        figura='semicorchea'
-    elif float(ql)==float(1/3):
-        figura='tresillo de corchea'
+    figura='no está en la lista'
+    
+    quarter_lengths=[0.25,1/3,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0]
+    figuras=['semicorchea','tresillo de corchea','corchea','corchea puntillo','negra','negra semicorchea','negra puntillo','negra doble puntillo','blanca','blanca semicorchea','blanca corchea','blanca corchea puntillo','blanca puntillo','blanca puntillo semicorchea','blanca puntillo corchea','blanca puntillo corchea puntillo','redonda']
+    index=indice(quarter_lengths,ql)
+    if type(index) is not str:
+            figura=figuras[index]
+    else:
+            figura=index
+    
     return figura
+
+def indice(a_list, value):
+    try:
+        return a_list.index(value)
+    except ValueError:
+        return 'no está en la lista'
 
 #-----------------------------------------------------------------------------------
 def f_motifs_rhytmic(cancion,length,nombre_parte=None):
