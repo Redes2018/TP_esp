@@ -175,56 +175,58 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
         #Primer instrumento
         voz = part.getElementsByClass(msc.stream.Measure)#todos los compases de la parte voz seleccionada
         motifs=[]
-        rhytms=[]
         frecuencias=[]
 
-        #Para eso vamos a recorrer la partitura y guardando solo el dato de la duracion rítmica en la lista llamada rhytms:
-
-        for i,el in enumerate(voz.flat):
-            if isinstance(el,msc.note.Note):
-                rhytms.append(float(el.quarterLength))
-            elif isinstance(el,msc.note.Rest):
-                rhytms.append('rest/'+ql_2_fig(el.quarterLength))
-
-        #Una vez creada la lista rhytm empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
-        motif_index=0
-        for r in range(0,len(rhytms)-length+1):
-            motif=[]
-            for l in range(0,length):
-                #motif.append(rhytms[r+l])
-                if  type(rhytms[r+l]) is not str:
-                        motif.append(ql_2_fig(rhytms[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
-                else:
-                        motif.append(rhytms[r+l])       
-            if (motif in motifs)==False:
-                motif_index+=1
-                motifs.append(motif)
-                frecuencias.append(1)
-            else:
-                indice_motif=motifs.index(motif)
-                frecuencias[indice_motif]+=1
+        #Para eso vamos a recorrer la partitura y guardando solo el dato de la duracion rítmica en la lista llamada rhytms.
+        #Esto lo voy a hacer para cada compas y luego vacio la lista rhytms_compas
+        rhytms_compas=[]
+        for c,compas in enumerate(voz):
+                for i,el in enumerate(compas):
+                        if isinstance(el,msc.note.Note):
+                                rhytms_compas.append(float(el.quarterLength))
+                        elif isinstance(el,msc.note.Rest):
+                                rhytms_compas.append('rest/'+ql_2_fig(el.quarterLength))
+        
+                #Una vez creada la lista rhytm_compas empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
+                for r in range(0,len(rhytms_compas)-length+1):
+                    motif=[]
+                    for l in range(0,length):
+                        #motif.append(rhytms[r+l])
+                        if  type(rhytms_compas[r+l]) is not str:
+                                motif.append(ql_2_fig(rhytms_compas[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
+                        else:
+                                motif.append(rhytms_compas[r+l])
+                    #una vez tengo armado un motif me fijo si esta en la lista motifs
+                    if (motif in motifs)==False:
+                        motifs.append(motif)
+                        frecuencias.append(1)
+                    else:
+                        indice_motif=motifs.index(motif)
+                        frecuencias[indice_motif]+=1
+                #vacio la lista
+                rhytms_compas=[]
         motifs_rhytmic=motifs
 
         #Grafico
         plt.figure
-        x=[]
-        xTicks=[]
+        yTick_position=[]
+        yTick_name=[]
         contador=-1
-        motif_umbral=1
+        contador_tick=-0.5
+        motif_umbral=0
         for m,motif in enumerate(motifs_rhytmic):
                 if frecuencias[m]>motif_umbral:
                         contador+=1
+                        contador_tick+=1
                         plt.barh(contador,frecuencias[m],color='red')
-                        x.append(contador)
-                        xTicks.append(motif)
-        plt.yticks(x, xTicks)
-        plt.yticks(range(len(xTicks)),xTicks, rotation=0,fontsize=8)
+                        yTick_position.append(contador_tick)
+                        yTick_name.append(motif)
+        plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=10)
         plt.title('Rhytmics '+str(length)+'-Motifs',fontsize=20)
         plt.show() 
-
+        
         return (motifs_rhytmic,frecuencias)
-
-#-----------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
 def f_motifs_tonal(cancion,length,nombre_parte=None):
         #Toma como input una canción (y el nombre de la parte o voz) y devuelve los motifs
         #tonales de tamano length y la frecuencia de aparicion de cada uno.
@@ -255,51 +257,60 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
         #Primer instrumento
         voz = part.getElementsByClass(msc.stream.Measure)#todos los compases de la parte voz seleccionada
         motifs=[]
-        tones=[]
+        tones_compas=[]
         frecuencias=[]
 
-        #Para eso vamos a recorrer la partitura y guardando solo el dato del tono en la lista llamada tones:
-
-        for i,el in enumerate(voz.flat):
-            if isinstance(el,msc.note.Note):
-                tone_name=str(el.name)+str(el.octave)
-                tones.append(tone_name)
-            elif isinstance(el,msc.note.Rest):
-                tones.append('rest')
-                
-        #Una vez creada la lista tones empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length
-        motif_index=0
-        for r in range(0,len(tones)-length+1):
-            motif=[]
-            for l in range(0,length):
-                motif.append(tones[r+l])
-            if (motif in motifs)==False:
-                motif_index+=1
-                motifs.append(motif)
-                frecuencias.append(1)
-            else:
-                indice_motif=motifs.index(motif)
-                frecuencias[indice_motif]+=1
+        #Para eso vamos a recorrer la partitura y guardando solo el dato de la duracion rítmica en la lista llamada rhytms.
+        #Esto lo voy a hacer para cada compas y luego vacio la lista tones_compas
+        tones_compas=[]
+        for c,compas in enumerate(voz):
+                for i,el in enumerate(compas):
+                        if isinstance(el,msc.note.Note):
+                                tone_name=str(el.name)+str(el.octave)
+                                tones_compas.append(tone_name)
+                        elif isinstance(el,msc.note.Rest):
+                                tones_compas.append('rest')
+        
+                #Una vez creada la lista rhytm_compas empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
+                for r in range(0,len(tones_compas)-length+1):
+                    motif=[]
+                    for l in range(0,length):
+                        #motif.append(rhytms[r+l])
+                        if  type(tones_compas[r+l]) is not str:
+                                motif.append(ql_2_fig(tones_compas[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
+                        else:
+                                motif.append(tones_compas[r+l])
+                    #una vez tengo armado un motif me fijo si esta en la lista motifs
+                    if (motif in motifs)==False:
+                        motifs.append(motif)
+                        frecuencias.append(1)
+                    else:
+                        indice_motif=motifs.index(motif)
+                        frecuencias[indice_motif]+=1
+                #vacio la lista
+                tones_compas=[]
         motifs_tonal=motifs
 
         #Grafico
         plt.figure
-        x=[]
-        xTicks=[]
+        yTick_position=[]
+        yTick_name=[]
         contador=-1
-        motif_umbral=2
+        contador_tick=-0.5
+        motif_umbral=0
         for m,motif in enumerate(motifs_tonal):
                 if frecuencias[m]>motif_umbral:
                         contador+=1
+                        contador_tick+=1
                         plt.barh(contador,frecuencias[m],color='blue')
-                        x.append(contador)
-                        xTicks.append(motif)
-        plt.yticks(x, xTicks)
-        plt.yticks(range(len(xTicks)),xTicks, rotation=0,fontsize=8)
+                        yTick_position.append(contador_tick)
+                        yTick_name.append(motif)
+        plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=10)
         plt.title('Tonals '+str(length)+'-Motifs',fontsize=20)
-        plt.show()        
+        plt.show()       
 
-        return (motifs_tonal,frecuencias)    
+        return (motifs_tonal,frecuencias)
+
 #-----------------------------------------------------------------------------------
 def f_grado_dist_M(G):
     
