@@ -115,13 +115,17 @@ def ql_2_fig(ql):
     #Toma como input un valor de quarterlength y devuelve un str
     #que es la figura que le corresponde.
     #Nota: falta completar con otros valores seguramente.
+    #Si ese valor no lo encuentra devuelve 'no está en la lista' y lo agregamos
+    #a mano en la lista.
+
     figura='no está en la lista'
     
-    quarter_lengths=[0.25,1/3,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0]
-    figuras=['semicorchea','tresillo de corchea','corchea','corchea puntillo','negra','negra semicorchea','negra puntillo','negra doble puntillo','blanca','blanca semicorchea','blanca corchea','blanca corchea puntillo','blanca puntillo','blanca puntillo semicorchea','blanca puntillo corchea','blanca puntillo corchea puntillo','redonda']
+    quarter_lengths=[0.5/3,0.25,1/3,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0]
+    figuras=['tresillo de semicorchea','semicorchea','tresillo de corchea','corchea','corchea puntillo','negra','negra semicorchea','negra puntillo','negra doble puntillo','blanca','blanca semicorchea','blanca corchea','blanca corchea puntillo','blanca puntillo','blanca puntillo semicorchea','blanca puntillo corchea','blanca puntillo corchea puntillo','redonda']
+    figuras_abrev=['ts','s','tc','c','cp','n','ns','np','npp','b','bs','bc','bcp','bp','bps','bpc','bpcp','r']
     index=indice(quarter_lengths,ql)
     if type(index) is not str:
-            figura=figuras[index]
+            figura=figuras_abrev[index]
     else:
             figura=index
     
@@ -137,6 +141,8 @@ def indice(a_list, value):
 def f_motifs_rhytmic(cancion,length,nombre_parte=None):
         #Toma como input una canción (y el nombre de la parte o voz) y devuelve los motifs
         #ritmicos de tamano length y la frecuencia de aparicion de cada uno.
+        #Realiza histograma, utilizando un cierto motif_umbral(empezamos a considerarlo motif
+        #a partir de una cierta frecuencia en adelante)
         
         #Cancion
         song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
@@ -171,7 +177,7 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
             if isinstance(el,msc.note.Note):
                 rhytms.append(float(el.quarterLength))
             elif isinstance(el,msc.note.Rest):
-                rhytms.append(float(el.quarterLength))
+                rhytms.append('rest/'+ql_2_fig(el.quarterLength))
 
         #Una vez creada la lista rhytm empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
         motif_index=0
@@ -179,17 +185,114 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
             motif=[]
             for l in range(0,length):
                 #motif.append(rhytms[r+l])
-                motif.append(ql_2_fig(rhytms[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
+                if  type(rhytms[r+l]) is not str:
+                        motif.append(ql_2_fig(rhytms[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
+                else:
+                        motif.append(rhytms[r+l])       
             if (motif in motifs)==False:
                 motif_index+=1
                 motifs.append(motif)
                 frecuencias.append(1)
             else:
-                frecuencias[motif_index-1]+=1
+                indice_motif=motifs.index(motif)
+                frecuencias[indice_motif]+=1
         motifs_rhytmic=motifs
 
+        #Grafico
+        plt.figure
+        x=[]
+        xTicks=[]
+        contador=-1
+        motif_umbral=1
+        for m,motif in enumerate(motifs_rhytmic):
+                if frecuencias[m]>motif_umbral:
+                        contador+=1
+                        plt.barh(contador,frecuencias[m],color='red')
+                        x.append(contador)
+                        xTicks.append(motif)
+        plt.yticks(x, xTicks)
+        plt.yticks(range(len(xTicks)),xTicks, rotation=0,fontsize=8)
+        plt.title('Rhytmics '+str(length)+'-Motifs',fontsize=20)
+        plt.show() 
+
         return (motifs_rhytmic,frecuencias)
-    
+
+#-----------------------------------------------------------------------------------
+def f_motifs_tonal(cancion,length,nombre_parte=None):
+        #Toma como input una canción (y el nombre de la parte o voz) y devuelve los motifs
+        #tonales de tamano length y la frecuencia de aparicion de cada uno.
+        #Realiza histograma, utilizando un cierto motif_umbral(empezamos a considerarlo motif
+        #a partir de una cierta frecuencia en adelante)
+        
+        #Cancion
+        song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
+        
+        Lp = len(song.parts) #Cantidad de partes (voces)
+        lista_partes = list(np.zeros(Lp)) #Crea una lista donde se van a guardas los nombres de las partes
+        
+        for i,elem in enumerate(song.parts):
+                lista_partes[i] = elem.partName #Guarda los nombres de las partes en la lista
+                
+        nombre_parte=nombre_parte or lista_partes[0]
+        
+        if not nombre_parte in lista_partes: #Si el nombre de la parte no esta en la lista, toma la primera voz
+                part = song.parts[0]
+                print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+                #Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
+        else:
+                j = lista_partes.index(nombre_parte)
+                part = song.parts[j]
+                print('Parte seleccionada: '+str(lista_partes[j]))
+                #Si el nombre sí esta entre las partes, lo selecciona y tambien te dice que parte usa
+                
+        #Primer instrumento
+        voz = part.getElementsByClass(msc.stream.Measure)#todos los compases de la parte voz seleccionada
+        motifs=[]
+        tones=[]
+        frecuencias=[]
+
+        #Para eso vamos a recorrer la partitura y guardando solo el dato del tono en la lista llamada tones:
+
+        for i,el in enumerate(voz.flat):
+            if isinstance(el,msc.note.Note):
+                tone_name=str(el.name)+str(el.octave)
+                tones.append(tone_name)
+            elif isinstance(el,msc.note.Rest):
+                tones.append('rest')
+                
+        #Una vez creada la lista tones empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length
+        motif_index=0
+        for r in range(0,len(tones)-length+1):
+            motif=[]
+            for l in range(0,length):
+                motif.append(tones[r+l])
+            if (motif in motifs)==False:
+                motif_index+=1
+                motifs.append(motif)
+                frecuencias.append(1)
+            else:
+                indice_motif=motifs.index(motif)
+                frecuencias[indice_motif]+=1
+        motifs_tonal=motifs
+
+        #Grafico
+        plt.figure
+        x=[]
+        xTicks=[]
+        contador=-1
+        motif_umbral=2
+        for m,motif in enumerate(motifs_tonal):
+                if frecuencias[m]>motif_umbral:
+                        contador+=1
+                        plt.barh(contador,frecuencias[m],color='blue')
+                        x.append(contador)
+                        xTicks.append(motif)
+        plt.yticks(x, xTicks)
+        plt.yticks(range(len(xTicks)),xTicks, rotation=0,fontsize=8)
+        plt.title('Tonals '+str(length)+'-Motifs',fontsize=20)
+        plt.show()        
+
+        return (motifs_tonal,frecuencias)    
 #-----------------------------------------------------------------------------------
 def f_grado_dist_M(G):
     
