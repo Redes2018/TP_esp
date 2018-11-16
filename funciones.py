@@ -135,12 +135,14 @@ def graficar(G, color_map='rainbow',layout='espiral'):
 	nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=800,alpha=1)
 	nx.draw_networkx_labels(G,pos)
 	edges = nx.draw_networkx_edges(G,pos,width=3)
+	fig=plt.figure(figsize=(16,16))
 	weights = list(nx.get_edge_attributes(G,'weight').values())
 	weight_max = max(weights)
 	for i in range(M):
 			edges[i].set_alpha((weights[i]/weight_max)**(1./2.)) # valores de alpha para cada enlace
-	plt.axis('off')
-	plt.show()
+	#plt.axis('off')
+	#plt.show()
+	return(fig)
 
 #-----------------------------------------------------------------------------------
 def ql_2_fig(ql):
@@ -386,7 +388,7 @@ def f_grado_dist_M(G):
     
     
     # Escala logaritmica en ambos ejes
-    plt.figure(figsize=(16,8))
+    fig=plt.figure(figsize=(16,8))
     plt.suptitle('Bin log - Escala log',fontsize=25)
     
     plt.subplot(1, 2, 1)
@@ -407,7 +409,7 @@ def f_grado_dist_M(G):
 
     plt.show()
    
-    return(k_in, k_out, pk_in, pk_out, N)
+    return(fig)
 
 #-----------------------------------------------------------------------------------
 def f_grado_dist_H(G):
@@ -439,7 +441,7 @@ def f_grado_dist_H(G):
         pk_logbin.append(histograma_logbin[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
 
     
-    plt.figure(figsize=(8,8))
+    fig=plt.figure(figsize=(8,8))
     
     plt.plot(bin_centros,pk_logbin,'bo')
     plt.xlabel('$log(k)$',fontsize=20)
@@ -449,7 +451,7 @@ def f_grado_dist_H(G):
     plt.title('Bin log - Escala log',fontsize=20)
     plt.show()
 
-    return(k, pk, N)
+    return(fig)
 #-----------------------------------------------------------------------------------
 
 def f_tabla(G,nombre):
