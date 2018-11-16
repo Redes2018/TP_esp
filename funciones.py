@@ -9,7 +9,7 @@ import music21 as msc
 #            FUNCIONES PARA ANALISIS DE MUSICA:
 #---------------------------------------------------------------------------------------------------------
 
-def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'):
+def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'): # Agrego este comment para modificar el archivo, se puede borrar
 	# Toma como input una canción (y el nombre de la parte o voz) y devuelve un grafo G
 	
 	# Cancion
