@@ -10,98 +10,181 @@ import music21 as msc
 #---------------------------------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'): # Agrego este comment para modificar el archivo, se puede borrar
-	# Toma como input una canción (y el nombre de la parte o voz) y devuelve un grafo G
-	
-	# Cancion
-	song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
-	
-	Lp = len(song.parts) # Cantidad de partes (voces)
-	lista_partes = list(np.zeros(Lp)) # Crea una lista donde se van a guardas los nombres de las partes
-	
-	for i,elem in enumerate(song.parts):
-		lista_partes[i] = elem.partName # Guarda los nombres de las partes en la lista
-	
-	nombre_parte = nombre_parte or lista_partes[0] # Si no tuvo nombre_parte como input,toma la primera voz
-	
-	if not nombre_parte in lista_partes: #Si el nombre de la parte no esta en la lista,toma la primera voz
-		part = song.parts[0]
-		print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-		# Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
-	else:
-		j = lista_partes.index(nombre_parte)
-		part = song.parts[j]
-		print('Parte seleccionada: '+str(lista_partes[j]))
-		# Si el nombre si esta entre las partes, lo selecciona y tambien te dice que parte usa
-	
-	# Primer instrumento
-	voz = part.getElementsByClass(msc.stream.Measure) # todos los compases de la parte voz seleccionada
-	notas = [x for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest] # todas las notas incluyendo silencios en la voz analizada con offset 'absoluto' (flat)
-	#notas = [x for x in voz.flat.notesAndRests] # esto también incluye acordes
-	L = len(notas) # longitud de la voz en cantidad de figuras
-	
-	# Creamos el grafo que sera dirigido
-	G = nx.DiGraph()
-	
-	if modelo == 'melodia':
-		oct_min = min(elem.octave for elem in notas if type(elem)==msc.note.Note) # para asignarle una octava a los silencios
+    # Toma como input una canción (y el nombre de la parte o voz) y
+    # devuelve un grafo G o una lista de grafos Gs si mas de una parte tiene el mismo nombre
 
-		# Nodos
-		# Recorremos todas las notas de la voz, incluyendo silencios
-		for i,el in enumerate(notas):
-			if isinstance(el,msc.note.Note):
-				nota_name = str(el.nameWithOctave)+'/'+str(el.quarterLength)
-				if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
-					G.add_node(nota_name)
-					G.node[nota_name]['freq'] = el.pitch.frequency
-					G.node[nota_name]['octava'] = el.octave
-					G.node[nota_name]['duracion'] = el.quarterLength
-				notas[i] = nota_name
+    # Cancion
+    song = msc.converter.parse(cancion) # Lee la partitura, queda un elemento stream.Score
 
-			elif isinstance(el,msc.note.Rest):
-				nota_name = str('rest')
-				if not G.has_node(nota_name):
-					G.add_node(nota_name)
-					G.node[nota_name]['freq'] = 2**(1/(2*np.pi))*20
-					G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
-					G.node[nota_name]['duracion'] = 1
-				notas[i] = nota_name
+    # Lista de nombres de las partes
+    Lp = len(song.parts) # Cantidad de partes (voces)
+    lista_partes = list(np.zeros(Lp)) # Crea una lista donde se van a guardar los nombres de las partes
+    for i,elem in enumerate(song.parts):
+        lista_partes[i] = elem.partName # Guarda los nombres de las partes en la lista
 
-	elif modelo == 'ritmo':
-		# Si solo interesa el ritmo, agregamos los sonidos en la octava 1 y las figuras en la 2, para el grafico
-		# Además, agregamos una frec inventada en funcion de la duracion, para poder usar la funcion graficar
-		for i,el in enumerate(notas):
-			if isinstance(el,msc.note.Note):
-				nota_name = str(el.quarterLength)
-				if not G.has_node(nota_name):
-					G.add_node(nota_name)
-					d = el.quarterLength
-					G.node[nota_name]['freq'] = 2**(d/(2*np.pi))*20
-					G.node[nota_name]['octava'] = 2
-					G.node[nota_name]['duracion'] = d
-				notas[i] = nota_name
+    # Seleccion de la parte a usar
+    nombre_parte = nombre_parte or lista_partes[0] # Si no tuvo nombre_parte como input,toma la primera voz
 
-			elif isinstance(el,msc.note.Rest):
-				nota_name = str(el.name)+'/'+str(el.quarterLength)
-				if not G.has_node(nota_name):
-					G.add_node(nota_name)
-					d = el.quarterLength
-					G.node[nota_name]['freq'] = 2**(d/(2*np.pi))*20
-					G.node[nota_name]['octava'] = 1
-					G.node[nota_name]['duracion'] = d
-				notas[i] = nota_name
-	
-	# Enlaces pesados
-	for i in range(L-1):  # recorremos desde la primera hasta la anteultima nota, uniendo sucesivas
-		if G.has_edge(notas[i],notas[i+1]):
-			G[notas[i]][notas[i+1]]['weight']+=1 # si el enlace ya existe, se le agrega +1 al peso
-		else:
-			G.add_edge(notas[i],notas[i+1],weight=1) # si el enlace no existe, se crea con peso 1
-	
-	return(G)
+    # Si el nombre de la parte no esta en la lista, toma la primera voz
+    if not nombre_parte in lista_partes: 
+        part = song.parts[0]
+        print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+        # Ademas devuelve el "error" de que el nombre no esta entre las partes, y dice que parte usa
+    else:
+        indexes = [index for index, name in enumerate(lista_partes) if name == nombre_parte]
+        if len(indexes)==1:
+            part = song.parts[indexes[0]]
+        else:
+            part = []
+            for j in indexes:
+                part.append(song.parts[j])
+        print('Partes: '+str(lista_partes)+'. Parte(s) seleccionada(s): '+str([lista_partes[i] for i in indexes]))
+        # Si el nombre si esta entre las partes, lo selecciona y tambien dice que parte usa
+
+    # Crea la(s) voz(ces) analizada(s) (todos los compases) y se queda con
+    # todas las notas incluyendo silencios con offset 'absoluto' (flat)
+    if type(part) == list:
+        voz = []
+        for parte in part:
+            voz.append(parte.getElementsByClass(msc.stream.Measure))
+        lista_notas = []
+        for voice in voz:
+            notes = [x for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+            lista_notas.append(notes)
+    else:
+        voz = part.getElementsByClass(msc.stream.Measure)
+        notas = [x for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+
+    # Creamos el grafo dirigido G o lista de grafos dirigidos Gs si hay mas de una voz
+    if type(part) == list:
+        Gs = [] # Va a ser una lista de grafos, uno por cada voz analizada
+        for notas in lista_notas:
+            G = nx.DiGraph()
+
+            if modelo == 'melodia':
+                oct_min = min(elem.octave for elem in notas if type(elem)==msc.note.Note) # para asignarle una octava a los silencios
+
+                # Nodos
+                # Recorremos todas las notas de la voz, incluyendo silencios
+                for i,el in enumerate(notas):
+                    if isinstance(el,msc.note.Note):
+                        nota_name = str(el.nameWithOctave)+'/'+str(el.quarterLength)
+                        if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
+                            G.add_node(nota_name)
+                            G.node[nota_name]['freq'] = el.pitch.frequency
+                            G.node[nota_name]['octava'] = el.octave
+                            G.node[nota_name]['duracion'] = el.quarterLength
+                        notas[i] = nota_name
+
+                    elif isinstance(el,msc.note.Rest):
+                        nota_name = str('rest')
+                        if not G.has_node(nota_name):
+                            G.add_node(nota_name)
+                            G.node[nota_name]['freq'] = 2**(1/(2*np.pi))*20
+                            G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
+                            G.node[nota_name]['duracion'] = 1
+                        notas[i] = nota_name
+
+            elif modelo == 'ritmo':
+                # Si solo interesa el ritmo, agregamos los sonidos en la octava 1 y las figuras en la 2, para el grafico
+                # Además, agregamos una frec inventada en funcion de la duracion, para poder usar la funcion graficar
+                d_max = max( [el.quarterLength for el in notas] )
+                d_min = min( [el.quarterLength for el in notas] )
+                for i,el in enumerate(notas):
+                    if isinstance(el,msc.note.Note):
+                        nota_name = str(el.quarterLength)
+                        if not G.has_node(nota_name):
+                            G.add_node(nota_name)
+                            d = el.quarterLength
+                            G.node[nota_name]['freq'] = 2**(d/(2*np.pi))*20
+                            G.node[nota_name]['octava'] = 1
+                            G.node[nota_name]['duracion'] = d
+                        notas[i] = nota_name
+
+                    elif isinstance(el,msc.note.Rest):
+                        nota_name = str(el.name)+'/'+str(el.quarterLength)
+                        if not G.has_node(nota_name):
+                            G.add_node(nota_name)
+                            d = el.quarterLength
+                            G.node[nota_name]['freq'] = 2**(d/(2*np.pi))*20
+                            G.node[nota_name]['octava'] = 0.1
+                            G.node[nota_name]['duracion'] = d
+                        notas[i] = nota_name
+
+            # Enlaces pesados
+            L = len(notas)
+            for i in range(L-1):  # recorremos desde la primera hasta la anteultima nota, uniendo sucesivas
+                if G.has_edge(notas[i],notas[i+1]):
+                    G[notas[i]][notas[i+1]]['weight']+=1 # si el enlace ya existe, se le agrega +1 al peso
+                else:
+                    G.add_edge(notas[i],notas[i+1],weight=1) # si el enlace no existe, se crea con peso 1
+            Gs.append(G)
+    else:
+        G = nx.DiGraph()
+
+        if modelo == 'melodia':
+            oct_min = min(elem.octave for elem in notas if type(elem)==msc.note.Note) # para asignarle una octava a los silencios
+
+            # Nodos
+            # Recorremos todas las notas de la voz, incluyendo silencios
+            for i,el in enumerate(notas):
+                if isinstance(el,msc.note.Note):
+                    nota_name = str(el.nameWithOctave)+'/'+str(el.quarterLength)
+                    if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
+                        G.add_node(nota_name)
+                        G.node[nota_name]['freq'] = el.pitch.frequency
+                        G.node[nota_name]['octava'] = el.octave
+                        G.node[nota_name]['duracion'] = el.quarterLength
+                    notas[i] = nota_name
+
+                elif isinstance(el,msc.note.Rest):
+                    nota_name = str('rest')
+                    if not G.has_node(nota_name):
+                        G.add_node(nota_name)
+                        G.node[nota_name]['freq'] = 2**(1/(2*np.pi))*20
+                        G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
+                        G.node[nota_name]['duracion'] = 1
+                    notas[i] = nota_name
+
+        elif modelo == 'ritmo':
+            # Si solo interesa el ritmo, agregamos los sonidos en la octava 1 y las figuras en la 2, para el grafico
+            # Además, agregamos una frec inventada en funcion de la duracion, para poder usar la funcion graficar
+            d_max = max( [el.quarterLength for el in notas] )
+            d_min = min( [el.quarterLength for el in notas] )
+            for i,el in enumerate(notas):
+                if isinstance(el,msc.note.Note):
+                    nota_name = str(el.quarterLength)
+                    if not G.has_node(nota_name):
+                        G.add_node(nota_name)
+                        d = el.quarterLength
+                        G.node[nota_name]['freq'] = 2**(d/(2*np.pi))*20
+                        G.node[nota_name]['octava'] = 1
+                        G.node[nota_name]['duracion'] = d
+                    notas[i] = nota_name
+
+                elif isinstance(el,msc.note.Rest):
+                    nota_name = str(el.name)+'/'+str(el.quarterLength)
+                    if not G.has_node(nota_name):
+                        G.add_node(nota_name)
+                        d = el.quarterLength
+                        G.node[nota_name]['freq'] = 2**(d/(2*np.pi))*20
+                        G.node[nota_name]['octava'] = 0.1
+                        G.node[nota_name]['duracion'] = d
+                    notas[i] = nota_name
+
+        # Enlaces pesados
+        L = len(notas)
+        for i in range(L-1):  # recorremos desde la primera hasta la anteultima nota, uniendo sucesivas
+            if G.has_edge(notas[i],notas[i+1]):
+                G[notas[i]][notas[i+1]]['weight']+=1 # si el enlace ya existe, se le agrega +1 al peso
+            else:
+                G.add_edge(notas[i],notas[i+1],weight=1) # si el enlace no existe, se crea con peso 1
+        Gs = G
+    return(Gs)
 
 #-----------------------------------------------------------------------------------
 
-def graficar(G, color_map='rainbow',layout='espiral'):
+def graficar(G, color_map='rainbow',layout='espiral', labels=False):
 	# Toma como input un grafo G y lo grafica
 	# Para que funcione, los nodos deben tener como atributos freq, duracion y octava
 	
@@ -126,35 +209,36 @@ def graficar(G, color_map='rainbow',layout='espiral'):
 			pos[nodo] = np.array([x,y])
 	
 	#octavas = np.array(list(nx.get_node_attributes(G,'octava').values())) #chicos comente esta linea porque no me estaba mapeando bien los colores.
-	octavas=np.array([G.node[nodo]['octava'] for i,nodo in enumerate(nodos)]) #agregue esta linea en reemplazo de la anterior.
+	octavas = np.array([G.node[nodo]['octava'] for i,nodo in enumerate(nodos)]) #agregue esta linea en reemplazo de la anterior.
 	oct_min = min(octavas)
 	oct_max = max(octavas)
 	colores_oct_nro = (octavas - oct_min)/(oct_max - oct_min)
 	m = cm.ScalarMappable(norm=None, cmap=color_map)
 	colores_oct = m.to_rgba(colores_oct_nro)
 	
-        #Grafico
+	#Grafico
 	fig=plt.figure(figsize=(16,16))
-	nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=800,alpha=1)
-	nx.draw_networkx_labels(G,pos)
-
+	grados = dict(nx.degree(G))
+	nx.draw_networkx_nodes(G,pos,node_list=grados.keys(),node_color=colores_oct,node_size=[50*v for v in grados.values()])
+	
+	if labels==True:
+		nx.draw_networkx_labels(G,pos)
+	
 	#Enlaces
-	#edges = nx.draw_networkx_edges(G,pos,width=3)
-	edges=G.edges()
+	edges = nx.draw_networkx_edges(G,pos,width=3)
 	weights = list(nx.get_edge_attributes(G,'weight').values())
 	weight_max = max(weights)
-	alphas = [(weights[i]/weight_max)**(1./2.) for i in range(0,M)]
-
-	#for i in range(M): #comente esta porque no me funcaba el edges[i]
-                #edges[i].set_alpha((weights[i]/weight_max)**(1./2.)) # valores de alpha para cada enlace
-
-	for e,edge in enumerate(edges):#reemplace con esto que me parece que hace lo mismo
-                edges=nx.draw_networkx_edges(G, pos, edgelist=[edge], width=3,alpha=alphas[e]) 
-        
-	#plt.axis('off')
-	#plt.show()
+	for i in range(M):
+		edges[i].set_alpha((weights[i]/weight_max)**(1./2.)) # valores de alpha para cada enlace
 	
-	return(fig)
+	# Si lo anterior no funciona, usar lo siguiente:
+	#edges = G.edges()
+	# alphas = [(weights[i]/weight_max)**(1./2.) for i in range(M)]
+	# for e,edge in enumerate(edges): #reemplace con esto que me parece que hace lo mismo
+		# edges=nx.draw_networkx_edges(G, pos, edgelist=[edge], width=3,alpha=alphas[e])
+		
+	plt.axis('off')
+	#plt.show()
 
 #-----------------------------------------------------------------------------------
 def ql_2_fig(ql):
