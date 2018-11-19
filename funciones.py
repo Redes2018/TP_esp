@@ -281,19 +281,19 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	lista_partes = list(np.zeros(Lp)) #Crea una lista donde se van a guardas los nombres de las partes
 	
 	for i,elem in enumerate(song.parts):
-			lista_partes[i] = elem.partName #Guarda los nombres de las partes en la lista
+		lista_partes[i] = elem.partName #Guarda los nombres de las partes en la lista
 			
 	nombre_parte=nombre_parte or lista_partes[0]
 	
 	if not nombre_parte in lista_partes: #Si el nombre de la parte no esta en la lista, toma la primera voz
-			part = song.parts[0]
-			print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-			#Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
+		part = song.parts[0]
+		print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+		#Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
 	else:
-			j = lista_partes.index(nombre_parte)
-			part = song.parts[j]
-			print('Parte seleccionada: '+str(lista_partes[j]))
-			#Si el nombre sí esta entre las partes, lo selecciona y tambien te dice que parte usa
+		j = lista_partes.index(nombre_parte)
+		part = song.parts[j]
+		print('Parte seleccionada: '+str(lista_partes[j]))
+		#Si el nombre sí esta entre las partes, lo selecciona y tambien te dice que parte usa
 			
 	#Primer instrumento
 	voz = part.getElementsByClass(msc.stream.Measure)#todos los compases de la parte voz seleccionada
@@ -304,30 +304,30 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	#Esto lo voy a hacer para cada compas y luego vacio la lista rhytms_compas
 	rhytms_compas=[]
 	for c,compas in enumerate(voz):
-			for i,el in enumerate(compas):
-					if isinstance(el,msc.note.Note):
-							rhytms_compas.append(float(el.quarterLength))
-					elif isinstance(el,msc.note.Rest):
-							rhytms_compas.append('rest/'+ql_2_fig(el.quarterLength))
-	
-			#Una vez creada la lista rhytm_compas empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
-			for r in range(0,len(rhytms_compas)-length+1):
-				motif=[]
-				for l in range(0,length):
-					#motif.append(rhytms[r+l])
-					if  type(rhytms_compas[r+l]) is not str:
-							motif.append(ql_2_fig(rhytms_compas[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
-					else:
-							motif.append(rhytms_compas[r+l])
-				#una vez tengo armado un motif me fijo si esta en la lista motifs
-				if (motif in motifs)==False:
-					motifs.append(motif)
-					frecuencias.append(1)
+		for i,el in enumerate(compas):
+			if isinstance(el,msc.note.Note):
+				rhytms_compas.append(float(el.quarterLength))
+			elif isinstance(el,msc.note.Rest):
+				rhytms_compas.append('rest/'+ql_2_fig(el.quarterLength))
+
+		#Una vez creada la lista rhytm_compas empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
+		for r in range(0,len(rhytms_compas)-length+1):
+			motif=[]
+			for l in range(0,length):
+				#motif.append(rhytms[r+l])
+				if  type(rhytms_compas[r+l]) is not str:
+					motif.append(ql_2_fig(rhytms_compas[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
 				else:
-					indice_motif=motifs.index(motif)
-					frecuencias[indice_motif]+=1
-			#vacio la lista
-			rhytms_compas=[]
+					motif.append(rhytms_compas[r+l])
+			#una vez tengo armado un motif me fijo si esta en la lista motifs
+			if (motif in motifs)==False:
+				motifs.append(motif)
+				frecuencias.append(1)
+			else:
+				indice_motif=motifs.index(motif)
+				frecuencias[indice_motif]+=1
+		#vacio la lista
+		rhytms_compas=[]
 	motifs_rhytmic=motifs
 
 	#Grafico
@@ -338,12 +338,12 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	contador_tick=-0.5
 	motif_umbral=0
 	for m,motif in enumerate(motifs_rhytmic):
-			if frecuencias[m]>motif_umbral:
-					contador+=1
-					contador_tick+=1
-					plt.barh(contador,frecuencias[m],color='red')
-					yTick_position.append(contador_tick)
-					yTick_name.append(motif)
+		if frecuencias[m]>motif_umbral:
+			contador+=1
+			contador_tick+=1
+			plt.barh(contador,frecuencias[m],color='red')
+			yTick_position.append(contador_tick)
+			yTick_name.append(motif)
 	plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=10)
 	plt.title('Rhytmics '+str(length)+'-Motifs',fontsize=20)
 	plt.show() 
@@ -363,19 +363,19 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
 	lista_partes = list(np.zeros(Lp)) #Crea una lista donde se van a guardas los nombres de las partes
 	
 	for i,elem in enumerate(song.parts):
-			lista_partes[i] = elem.partName #Guarda los nombres de las partes en la lista
+		lista_partes[i] = elem.partName #Guarda los nombres de las partes en la lista
 			
 	nombre_parte=nombre_parte or lista_partes[0]
 	
 	if not nombre_parte in lista_partes: #Si el nombre de la parte no esta en la lista, toma la primera voz
-			part = song.parts[0]
-			print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-			#Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
+		part = song.parts[0]
+		print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+		#Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
 	else:
-			j = lista_partes.index(nombre_parte)
-			part = song.parts[j]
-			print('Parte seleccionada: '+str(lista_partes[j]))
-			#Si el nombre sí esta entre las partes, lo selecciona y tambien te dice que parte usa
+		j = lista_partes.index(nombre_parte)
+		part = song.parts[j]
+		print('Parte seleccionada: '+str(lista_partes[j]))
+		#Si el nombre sí esta entre las partes, lo selecciona y tambien te dice que parte usa
 			
 	#Primer instrumento
 	voz = part.getElementsByClass(msc.stream.Measure)#todos los compases de la parte voz seleccionada
@@ -387,31 +387,31 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
 	#Esto lo voy a hacer para cada compas y luego vacio la lista tones_compas
 	tones_compas=[]
 	for c,compas in enumerate(voz):
-			for i,el in enumerate(compas):
-					if isinstance(el,msc.note.Note):
-							tone_name=str(el.name)+str(el.octave)
-							tones_compas.append(tone_name)
-					elif isinstance(el,msc.note.Rest):
-							tones_compas.append('rest')
-	
-			#Una vez creada la lista rhytm_compas empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
-			for r in range(0,len(tones_compas)-length+1):
-				motif=[]
-				for l in range(0,length):
-					#motif.append(rhytms[r+l])
-					if  type(tones_compas[r+l]) is not str:
-							motif.append(ql_2_fig(tones_compas[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
-					else:
-							motif.append(tones_compas[r+l])
-				#una vez tengo armado un motif me fijo si esta en la lista motifs
-				if (motif in motifs)==False:
-					motifs.append(motif)
-					frecuencias.append(1)
+		for i,el in enumerate(compas):
+			if isinstance(el,msc.note.Note):
+				tone_name=str(el.name)+str(el.octave)
+				tones_compas.append(tone_name)
+			elif isinstance(el,msc.note.Rest):
+				tones_compas.append('rest')
+
+		#Una vez creada la lista rhytm_compas empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
+		for r in range(0,len(tones_compas)-length+1):
+			motif=[]
+			for l in range(0,length):
+				#motif.append(rhytms[r+l])
+				if  type(tones_compas[r+l]) is not str:
+					motif.append(ql_2_fig(tones_compas[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
 				else:
-					indice_motif=motifs.index(motif)
-					frecuencias[indice_motif]+=1
-			#vacio la lista
-			tones_compas=[]
+					motif.append(tones_compas[r+l])
+			#una vez tengo armado un motif me fijo si esta en la lista motifs
+			if (motif in motifs)==False:
+				motifs.append(motif)
+				frecuencias.append(1)
+			else:
+				indice_motif=motifs.index(motif)
+				frecuencias[indice_motif]+=1
+		#vacio la lista
+		tones_compas=[]
 	motifs_tonal=motifs
 
 	#Grafico
@@ -422,12 +422,12 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
 	contador_tick=-0.5
 	motif_umbral=0
 	for m,motif in enumerate(motifs_tonal):
-			if frecuencias[m]>motif_umbral:
-					contador+=1
-					contador_tick+=1
-					plt.barh(contador,frecuencias[m],color='blue')
-					yTick_position.append(contador_tick)
-					yTick_name.append(motif)
+		if frecuencias[m]>motif_umbral:
+			contador+=1
+			contador_tick+=1
+			plt.barh(contador,frecuencias[m],color='blue')
+			yTick_position.append(contador_tick)
+			yTick_name.append(motif)
 	plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=10)
 	plt.title('Tonals '+str(length)+'-Motifs',fontsize=20)
 	plt.show()       
@@ -686,23 +686,23 @@ def f_xml2graph_armonia(cancion, index):
 	octavas=[]#lista que va a contener las octavas de cada nota
 
 	for c,compas in enumerate(voz):
-			#print('compas'+str(c)) #imprimo que compas es
-			for i,el in enumerate(compas.flat):
-					if isinstance(el,msc.note.Note):#si es una nota
-							nota_name=str(el.nameWithOctave)
-							notas.append(nota_name)
-							tiempo_nota=float(compas.offset+el.offset)
-							tiempos.append(tiempo_nota)
-							frecuencias.append(el.pitch.frequency)
-							octavas.append(el.octave)
-					if isinstance(el,msc.chord.Chord):#si es un acorde
-							for nc,noteChord in enumerate(el):
-									nota_name=str(noteChord.nameWithOctave)
-									notas.append(nota_name)
-									tiempo_nota=float(compas.offset)+float(el.offset)
-									tiempos.append(tiempo_nota)
-									frecuencias.append(noteChord.pitch.frequency)
-									octavas.append(noteChord.octave)
+		#print('compas'+str(c)) #imprimo que compas es
+		for i,el in enumerate(compas.flat):
+			if isinstance(el,msc.note.Note):#si es una nota
+				nota_name=str(el.nameWithOctave)
+				notas.append(nota_name)
+				tiempo_nota=float(compas.offset+el.offset)
+				tiempos.append(tiempo_nota)
+				frecuencias.append(el.pitch.frequency)
+				octavas.append(el.octave)
+			if isinstance(el,msc.chord.Chord):#si es un acorde
+				for nc,noteChord in enumerate(el):
+					nota_name=str(noteChord.nameWithOctave)
+					notas.append(nota_name)
+					tiempo_nota=float(compas.offset)+float(el.offset)
+					tiempos.append(tiempo_nota)
+					frecuencias.append(noteChord.pitch.frequency)
+					octavas.append(noteChord.octave)
 									
 	#Listo: tenemos tres listas: notas,tiempos,frecuencias.
 	#Incializamos el grafo: los nodos seran notas. 
@@ -717,43 +717,43 @@ def f_xml2graph_armonia(cancion, index):
 	octava=[octavas[0]]
 	tiempos_armonias=[]
 	for t in range(1,len(tiempos)):
-			tiempo_new=tiempos[t]
-			if(tiempo_new-tiempo_actual)==0:#significa que seguimos en el mismo tiempo actual.
-					armonia.append(notas[t])
-					tonos.append(frecuencias[t])
-					octava.append(octavas[t])
-					tiempo_actual=tiempos[t]#acualizamos tiempos_old.
-			else: #significa que cambiamos de tiempo.
-					tiempo_actual=tiempos[t]#actualizamos tiempos_old.
-					#reordenamos las notas en armonia de menor tono a mayor tono:
-					tonos_ordenados=np.sort(tonos)
-					octava_ordenada=[]
-					armonia_ordenada=[]
-					for f,tono in enumerate(tonos_ordenados):
-							indice=tonos.index(tono)
-							armonia_ordenada.append(armonia[indice])
-							octava_ordenada.append(octava[indice])
-					if len(armonia)>=2:#consideramos armonia si son 2 o mas sonidos que suenan simultaneos.
-							tiempos_armonias.append(tiempos[t])#es el tiempo en el que ocurrio esa armonia
-							armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada solo si la armonia tiene 2 o mas notas.
-							#Agrego nodos al grafo:
-							for n,nota in enumerate(armonia_ordenada):
-									G.add_node(nota)
-									G.node[nota]['freq'] = tonos_ordenados[n]
-									G.node[nota]['octava'] = octava_ordenada[n]
-									G.node[nota]['duracion']=4.0 #por ahora no distinguimos duracion en las armonias
-					armonia=[notas[t]]
-					tonos=[frecuencias[t]]
-					octava=[octavas[t]]
+		tiempo_new=tiempos[t]
+		if(tiempo_new-tiempo_actual)==0:#significa que seguimos en el mismo tiempo actual.
+			armonia.append(notas[t])
+			tonos.append(frecuencias[t])
+			octava.append(octavas[t])
+			tiempo_actual=tiempos[t]#acualizamos tiempos_old.
+		else: #significa que cambiamos de tiempo.
+			tiempo_actual=tiempos[t]#actualizamos tiempos_old.
+			#reordenamos las notas en armonia de menor tono a mayor tono:
+			tonos_ordenados=np.sort(tonos)
+			octava_ordenada=[]
+			armonia_ordenada=[]
+			for f,tono in enumerate(tonos_ordenados):
+				indice=tonos.index(tono)
+				armonia_ordenada.append(armonia[indice])
+				octava_ordenada.append(octava[indice])
+			if len(armonia)>=2:#consideramos armonia si son 2 o mas sonidos que suenan simultaneos.
+				tiempos_armonias.append(tiempos[t])#es el tiempo en el que ocurrio esa armonia
+				armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada solo si la armonia tiene 2 o mas notas.
+				#Agrego nodos al grafo:
+				for n,nota in enumerate(armonia_ordenada):
+					G.add_node(nota)
+					G.node[nota]['freq'] = tonos_ordenados[n]
+					G.node[nota]['octava'] = octava_ordenada[n]
+					G.node[nota]['duracion']=4.0 #por ahora no distinguimos duracion en las armonias
+			armonia=[notas[t]]
+			tonos=[frecuencias[t]]
+			octava=[octavas[t]]
 					
 	#Agregamos los enlaces al grafo:
 	#Los enlaces se haran si dos notas pertenecen a una misma armonia. Los enlaces son no dirigidos.
 	
 	for a,armonia in enumerate(armonias):
-			for n in range (0,len(armonia)):
-					if G.has_edge(armonia[-1+n],armonia[n]):
-							G[armonia[-1+n]][armonia[n]]['weight']+=1        
-					else:
-							G.add_edge(armonia[-1+n],armonia[n],weight=1)
-					
+		for n in range (0,len(armonia)):
+			if G.has_edge(armonia[-1+n],armonia[n]):
+				G[armonia[-1+n]][armonia[n]]['weight']+=1        
+			else:
+				G.add_edge(armonia[-1+n],armonia[n],weight=1)
+				
 	return(G)
