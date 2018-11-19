@@ -225,17 +225,12 @@ def graficar(G, color_map='rainbow',layout='espiral', labels=False):
 		nx.draw_networkx_labels(G,pos)
 	
 	#Enlaces
-	edges = nx.draw_networkx_edges(G,pos,width=3)
-	weights = list(nx.get_edge_attributes(G,'weight').values())
+	edges = G.edges()
+	weights = np.array(list(nx.get_edge_attributes(G,'weight').values()))
 	weight_max = max(weights)
-	for i in range(M):
-		edges[i].set_alpha((weights[i]/weight_max)**(1./2.)) # valores de alpha para cada enlace
-	
-	# Si lo anterior no funciona, usar lo siguiente:
-	#edges = G.edges()
-	# alphas = [(weights[i]/weight_max)**(1./2.) for i in range(M)]
-	# for e,edge in enumerate(edges): #reemplace con esto que me parece que hace lo mismo
-		# edges=nx.draw_networkx_edges(G, pos, edgelist=[edge], width=3,alpha=alphas[e])
+	alphas = (weights/weight_max)**(1./2.)
+	for e,edge in enumerate(edges): #reemplace con esto que me parece que hace lo mismo
+		nx.draw_networkx_edges(G, pos, edgelist=[edge], width=3,alpha=alphas[e])
 		
 	plt.axis('off')
 	#plt.show()
