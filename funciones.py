@@ -9,12 +9,16 @@ import music21 as msc
 #            FUNCIONES PARA ANALISIS DE MUSICA:
 #---------------------------------------------------------------------------------------------------------
 
-def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'): # Agrego este comment para modificar el archivo, se puede borrar
+def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'): 
     # Toma como input una canción (y el nombre de la parte o voz) y
     # devuelve un grafo G o una lista de grafos Gs si mas de una parte tiene el mismo nombre
-
+    # cancion puede ser la ubicacion del archivo o directamente el Score de music21
+    
     # Cancion
-    song = msc.converter.parse(cancion) # Lee la partitura, queda un elemento stream.Score
+    if type(cancion)==msc.stream.Score:
+        song = cancion
+    else:
+        song = msc.converter.parse(cancion) # Lee la partitura, queda un elemento stream.Score
 
     # Lista de nombres de las partes
     Lp = len(song.parts) # Cantidad de partes (voces)
@@ -229,7 +233,7 @@ def graficar(G, color_map='rainbow',layout='espiral', labels=False):
 	weights = np.array(list(nx.get_edge_attributes(G,'weight').values()))
 	weight_max = max(weights)
 	alphas = (weights/weight_max)**(1./2.)
-	for e,edge in enumerate(edges): #reemplace con esto que me parece que hace lo mismo
+	for e,edge in enumerate(edges):
 		nx.draw_networkx_edges(G, pos, edgelist=[edge], width=3,alpha=alphas[e])
 		
 	plt.axis('off')
