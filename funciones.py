@@ -16,9 +16,9 @@ def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'):
     
     # Cancion
     if type(cancion)==msc.stream.Score:
-        song = cancion
+        song = cancion # Si la cancion ya es un stream.Score, se queda con eso
     else:
-        song = msc.converter.parse(cancion) # Lee la partitura, queda un elemento stream.Score
+        song = msc.converter.parse(cancion) # Sino, lee la partitura, queda un elemento stream.Score
 
     # Lista de nombres de las partes
     Lp = len(song.parts) # Cantidad de partes (voces)
@@ -274,7 +274,10 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	#a partir de una cierta frecuencia en adelante)
 	
 	#Cancion
-	song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
+	if type(cancion)==msc.stream.Score:
+		song = cancion # Si la cancion ya es un stream.Score, se queda con eso
+	else:
+		song = msc.converter.parse(cancion) # Sino, lee la partitura, queda un elemento stream.Score
 	
 	Lp = len(song.parts) #Cantidad de partes (voces)
 	lista_partes = list(np.zeros(Lp)) #Crea una lista donde se van a guardas los nombres de las partes
@@ -356,7 +359,10 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
 	#a partir de una cierta frecuencia en adelante)
 	
 	#Cancion
-	song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
+	if type(cancion)==msc.stream.Score:
+		song = cancion # Si la cancion ya es un stream.Score, se queda con eso
+	else:
+		song = msc.converter.parse(cancion) # Sino, lee la partitura, queda un elemento stream.Score
 	
 	Lp = len(song.parts) #Cantidad de partes (voces)
 	lista_partes = list(np.zeros(Lp)) #Crea una lista donde se van a guardas los nombres de las partes
@@ -651,7 +657,10 @@ def f_xml2graph_armonia(cancion, index):
 	#Nota: si dos acordes estan ligados,los cuenta dos veces y no una vez sola.
 	
 	#Cancion
-	song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
+	if type(cancion)==msc.stream.Score:
+		song = cancion # Si la cancion ya es un stream.Score, se queda con eso
+	else:
+		song = msc.converter.parse(cancion) # Sino, lee la partitura, queda un elemento stream.Score
 	'''
 	#--------------------------------------------------------------------------------------------------------
 	#Comente esta parte porque cuando entraba dos voces tenian el mismo nombre y no podia elegir la segunda.
