@@ -221,7 +221,6 @@ def graficar(G, color_map='rainbow',layout='espiral', labels=False):
 	colores_oct = m.to_rgba(colores_oct_nro)
 	
 	#Grafico
-	fig=plt.figure(figsize=(16,16))
 	grados = dict(nx.degree(G))
 	nx.draw_networkx_nodes(G,pos,node_list=grados.keys(),node_color=colores_oct,node_size=[50*v for v in grados.values()])
 	
@@ -333,7 +332,7 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	motifs_rhytmic=motifs
 
 	#Grafico
-	plt.figure
+	#plt.figure
 	yTick_position=[]
 	yTick_name=[]
 	contador=-1
@@ -348,7 +347,7 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 			yTick_name.append(motif)
 	plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=10)
 	plt.title('Rhytmics '+str(length)+'-Motifs',fontsize=20)
-	plt.show() 
+	#plt.show() 
 	
 	return (motifs_rhytmic,frecuencias)
 #---------------------------------------------------------------------------------
@@ -420,7 +419,7 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
 	motifs_tonal=motifs
 
 	#Grafico
-	plt.figure
+	#plt.figure
 	yTick_position=[]
 	yTick_name=[]
 	contador=-1
@@ -435,7 +434,7 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
 			yTick_name.append(motif)
 	plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=10)
 	plt.title('Tonals '+str(length)+'-Motifs',fontsize=20)
-	plt.show()       
+	#plt.show()       
 
 	return (motifs_tonal,frecuencias)
 
