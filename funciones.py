@@ -647,6 +647,7 @@ def f_tabla(G,nombre):
     
     return(haytabla)
 
+#-----------------------------------------------------------------------------------
 def f_xml2graph_armonia(cancion, index):
         #Toma como input una canción y el indice de la voz, y encuentra todas las armonias.
         #Obtiene un vector de armonias(2 o mas notas simultaneas) y el momento en el cual ocurrieron.
@@ -663,6 +664,7 @@ def f_xml2graph_armonia(cancion, index):
       
         #Instrumento
         part=song.parts[index]
+        print('Instrumento Seleccionado:'+str(part.partName))
         voz = part.getElementsByClass(msc.stream.Measure)#todos los compases dela parte voz seleccionada
         notas=[]#lista que va a contener cada uno de las notas. Si dos o mas notas so n simultaneas comparten el mismo offset
         tiempos=[]#lista que va a contener a los tiempos de cada una de las notas en la lista notas medidos desde el principio segun la cantidad offset
@@ -672,6 +674,7 @@ def f_xml2graph_armonia(cancion, index):
         for c,compas in enumerate(voz):
                 #print('compas'+str(c)) #imprimo que compas es
                 for i,el in enumerate(compas.flat):
+                        isChord=str(type(el))=='<class \'music21.chord.Chord\'>' #me fijo si es un elemento del tipo acorde chord.Chord
                         if isinstance(el,msc.note.Note):#si es una nota
                                 nota_name=str(el.nameWithOctave)
                                 notas.append(nota_name)
@@ -679,7 +682,7 @@ def f_xml2graph_armonia(cancion, index):
                                 tiempos.append(tiempo_nota)
                                 frecuencias.append(el.pitch.frequency)
                                 octavas.append(el.octave)
-                        if isinstance(el,msc.chord.Chord):#si es un acorde
+                        elif isinstance(el,msc.chord.Chord) & isChord==True:#si es un acorde pero no del tipo chorChord
                                 for nc,noteChord in enumerate(el):
                                         nota_name=str(noteChord.nameWithOctave)
                                         notas.append(nota_name)
@@ -689,6 +692,7 @@ def f_xml2graph_armonia(cancion, index):
                                         octavas.append(noteChord.octave)
                                         
         #Listo: tenemos tres listas: notas,tiempos,frecuencias.
+        #print(notas,tiempos)
         #Incializamos el grafo: los nodos seran notas. 
         G=nx.Graph()
         
@@ -754,7 +758,7 @@ def f_armon(cancion, indexes):
         #si hubo algun momento en el que ocurrieron simultaneamente. Además esos enlaces estan pesados.
         #Notas: -si dos acordes estan ligados,los cuenta dos veces y no una vez sola.
         #       -pueden aparecer autoloops cuando dos voces toquen la misma nota de forma simultanea.
-        #       -si no encuentra armonias porque es una linea melodica pura devuelve un string :'No se encontraron armonias en estas voces'
+        #       -si no encuentra armonias devuelve un string :'No se encontraron armonias entre estas voces'
 
         #Cancion
         song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
@@ -784,6 +788,7 @@ def f_armon(cancion, indexes):
                         frecuencias=[]
                         octavas=[]
                         for i,el in enumerate(compas.flat):
+                                isChord=str(type(el))=='<class \'music21.chord.Chord\'>' #me fijo si es un elemento del tipo acorde chord.Chord
                                 if isinstance(el,msc.note.Note):#si es una nota
                                         nota_name=str(el.nameWithOctave)
                                         notas.append(nota_name)
@@ -799,7 +804,7 @@ def f_armon(cancion, indexes):
                                         octavas.append(el.octave)
                                         Octavas_compas.append(el.octave)
                                         
-                                if isinstance(el,msc.chord.Chord):#si es un acorde
+                                if isinstance(el,msc.chord.Chord) & isChord==True:#si es un acorde
                                         for nc,noteChord in enumerate(el):
                                                 nota_name=str(noteChord.nameWithOctave)
                                                 notas.append(nota_name)
@@ -895,5 +900,5 @@ def f_armon(cancion, indexes):
         if G.number_of_nodes() !=0:     
                 return(G)
         else:
-                return('No se encontraron armonias entre estas voces')  
-#---------------------------------------------------------------------------
+                return('No se encontraron armonias entre estas voces')
+##---------------------------------------------------------------------------
