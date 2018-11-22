@@ -647,120 +647,253 @@ def f_tabla(G,nombre):
     
     return(haytabla)
 
-#-----------------------------------------------------------------------------------
 def f_xml2graph_armonia(cancion, index):
-	#Toma como input una canción y el indice de la voz, y encuentra todas las armonias.
-	#Obtiene un vector de armonias(2 o mas notas simultaneas) y el momento en el cual ocurrieron.
-	#Construye grafo no dirigido, dos notas resultan enlazadas si pertenecen a una armonia, es decir,
-	#si hubo algun momento en el que ocurrieron simultaneamente. Además esos enlaces estan pesados.
-	#Nota: si dos acordes estan ligados,los cuenta dos veces y no una vez sola.
-	
-	#Cancion
-	if type(cancion)==msc.stream.Score:
-		song = cancion # Si la cancion ya es un stream.Score, se queda con eso
-	else:
-		song = msc.converter.parse(cancion) # Sino, lee la partitura, queda un elemento stream.Score
-	'''
-	#--------------------------------------------------------------------------------------------------------
-	#Comente esta parte porque cuando entraba dos voces tenian el mismo nombre y no podia elegir la segunda.
-	#Ver si se puede arreglar eso porque esta muy piola esto de que te muestre las voces.
-	#--------------------------------------------------------------------------------------------------------
-	
-	Lp = len(song.parts) #Cantidad de partes (voces)
-	lista_partes = list(np.zeros(Lp)) #Crea una lista donde se van a guardas los nombres de las partes
-	
-	for i,elem in enumerate(song.parts):
-			lista_partes[i] = elem.partName #Guarda los nombres de las partes en la lista
-			
-	nombre_parte=nombre_parte or lista_partes[0]
-	
-	if not nombre_parte in lista_partes: #Si el nombre de la parte no esta en la lista, toma la primera voz
-			part = song.parts[0]
-			print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-			#Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
-	else:
-			j = lista_partes.index(nombre_parte)
-			part = song.parts[j]
-			print('Parte seleccionada: '+str(lista_partes[j]))
-		   #Si el nombre sí esta entre las partes, lo selecciona y tambien te dice que parte usa
-	'''        
-	#Instrumento
-	part=song.parts[index]
-	voz = part.getElementsByClass(msc.stream.Measure)#todos los compases dela parte voz seleccionada
-	notas=[]#lista que va a contener cada uno de las notas. Si dos o mas notas so n simultaneas comparten el mismo offset
-	tiempos=[]#lista que va a contener a los tiempos de cada una de las notas en la lista notas medidos desde el principio segun la cantidad offset
-	frecuencias=[]#lista que va a contener la frecuencia de cada nota en la lista notas para despues ordenar en cada armonia de la mas grave a la mas aguda
-	octavas=[]#lista que va a contener las octavas de cada nota
+        #Toma como input una canción y el indice de la voz, y encuentra todas las armonias.
+        #Obtiene un vector de armonias(2 o mas notas simultaneas) y el momento en el cual ocurrieron.
+        #Construye grafo no dirigido, dos notas resultan enlazadas si pertenecen a una armonia, es decir,
+        #si hubo algun momento en el que ocurrieron simultaneamente. Además esos enlaces estan pesados.
+        #Notas: -si dos acordes estan ligados,los cuenta dos veces y no una vez sola.
+        #       -no hay autoloops lo cual tiene sentido si analizo una sola voz.
+        #       -si encuentra armonias devuelve Grafo.
+        #       -si no encuentra armonias porque es una linea melodica pura devuelve un string :'No se encontraron armonias en esta voz'
+        
+        
+        #Cancion
+        song = msc.converter.parse(cancion)
+      
+        #Instrumento
+        part=song.parts[index]
+        voz = part.getElementsByClass(msc.stream.Measure)#todos los compases dela parte voz seleccionada
+        notas=[]#lista que va a contener cada uno de las notas. Si dos o mas notas so n simultaneas comparten el mismo offset
+        tiempos=[]#lista que va a contener a los tiempos de cada una de las notas en la lista notas medidos desde el principio segun la cantidad offset
+        frecuencias=[]#lista que va a contener la frecuencia de cada nota en la lista notas para despues ordenar en cada armonia de la mas grave a la mas aguda
+        octavas=[]#lista que va a contener las octavas de cada nota
 
-	for c,compas in enumerate(voz):
-		#print('compas'+str(c)) #imprimo que compas es
-		for i,el in enumerate(compas.flat):
-			if isinstance(el,msc.note.Note):#si es una nota
-				nota_name=str(el.nameWithOctave)
-				notas.append(nota_name)
-				tiempo_nota=float(compas.offset+el.offset)
-				tiempos.append(tiempo_nota)
-				frecuencias.append(el.pitch.frequency)
-				octavas.append(el.octave)
-			if isinstance(el,msc.chord.Chord):#si es un acorde
-				for nc,noteChord in enumerate(el):
-					nota_name=str(noteChord.nameWithOctave)
-					notas.append(nota_name)
-					tiempo_nota=float(compas.offset)+float(el.offset)
-					tiempos.append(tiempo_nota)
-					frecuencias.append(noteChord.pitch.frequency)
-					octavas.append(noteChord.octave)
-									
-	#Listo: tenemos tres listas: notas,tiempos,frecuencias.
-	#Incializamos el grafo: los nodos seran notas. 
-	G=nx.Graph()
-	
-	#Recorremos el vector de tiempos y nos fijamos todas las notas que caen en un mismo tiempo y las guardamos en la lista armonia y esta la guardamos en la lista armonias:
-	armonias=[] #lista de armonia
-	tiempos_unique=list(np.unique(tiempos))#vector de tiempos unicos donde ninguno se repite:
-	armonia=[notas[0]] #al principio armonia tiene la primer nota de la cancion
-	tiempo_actual=tiempos[0]
-	tonos=[frecuencias[0]]#contendra las frecuencias de las notas en armonia, para ordenarlas de la mas grave a la mas aguda antes de guardar armonia
-	octava=[octavas[0]]
-	tiempos_armonias=[]
-	for t in range(1,len(tiempos)):
-		tiempo_new=tiempos[t]
-		if(tiempo_new-tiempo_actual)==0:#significa que seguimos en el mismo tiempo actual.
-			armonia.append(notas[t])
-			tonos.append(frecuencias[t])
-			octava.append(octavas[t])
-			tiempo_actual=tiempos[t]#acualizamos tiempos_old.
-		else: #significa que cambiamos de tiempo.
-			tiempo_actual=tiempos[t]#actualizamos tiempos_old.
-			#reordenamos las notas en armonia de menor tono a mayor tono:
-			tonos_ordenados=np.sort(tonos)
-			octava_ordenada=[]
-			armonia_ordenada=[]
-			for f,tono in enumerate(tonos_ordenados):
-				indice=tonos.index(tono)
-				armonia_ordenada.append(armonia[indice])
-				octava_ordenada.append(octava[indice])
-			if len(armonia)>=2:#consideramos armonia si son 2 o mas sonidos que suenan simultaneos.
-				tiempos_armonias.append(tiempos[t])#es el tiempo en el que ocurrio esa armonia
-				armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada solo si la armonia tiene 2 o mas notas.
-				#Agrego nodos al grafo:
-				for n,nota in enumerate(armonia_ordenada):
-					G.add_node(nota)
-					G.node[nota]['freq'] = tonos_ordenados[n]
-					G.node[nota]['octava'] = octava_ordenada[n]
-					G.node[nota]['duracion']=4.0 #por ahora no distinguimos duracion en las armonias
-			armonia=[notas[t]]
-			tonos=[frecuencias[t]]
-			octava=[octavas[t]]
-					
-	#Agregamos los enlaces al grafo:
-	#Los enlaces se haran si dos notas pertenecen a una misma armonia. Los enlaces son no dirigidos.
-	
-	for a,armonia in enumerate(armonias):
-		for n in range (0,len(armonia)):
-			if G.has_edge(armonia[-1+n],armonia[n]):
-				G[armonia[-1+n]][armonia[n]]['weight']+=1        
-			else:
-				G.add_edge(armonia[-1+n],armonia[n],weight=1)
-				
-	return(G)
+        for c,compas in enumerate(voz):
+                #print('compas'+str(c)) #imprimo que compas es
+                for i,el in enumerate(compas.flat):
+                        if isinstance(el,msc.note.Note):#si es una nota
+                                nota_name=str(el.nameWithOctave)
+                                notas.append(nota_name)
+                                tiempo_nota=float(compas.offset+el.offset)
+                                tiempos.append(tiempo_nota)
+                                frecuencias.append(el.pitch.frequency)
+                                octavas.append(el.octave)
+                        if isinstance(el,msc.chord.Chord):#si es un acorde
+                                for nc,noteChord in enumerate(el):
+                                        nota_name=str(noteChord.nameWithOctave)
+                                        notas.append(nota_name)
+                                        tiempo_nota=float(compas.offset)+float(el.offset)
+                                        tiempos.append(tiempo_nota)
+                                        frecuencias.append(noteChord.pitch.frequency)
+                                        octavas.append(noteChord.octave)
+                                        
+        #Listo: tenemos tres listas: notas,tiempos,frecuencias.
+        #Incializamos el grafo: los nodos seran notas. 
+        G=nx.Graph()
+        
+        #Recorremos el vector de tiempos y nos fijamos todas las notas que caen en un mismo tiempo y las guardamos en la lista armonia y esta la guardamos en la lista armonias:
+        armonias=[] #lista de armonia
+        tiempos_unique=list(np.unique(tiempos))#vector de tiempos unicos donde ninguno se repite:
+        armonia=[notas[0]] #al principio armonia tiene la primer nota de la cancion
+        tiempo_actual=tiempos[0]
+        tonos=[frecuencias[0]]#contendra las frecuencias de las notas en armonia, para ordenarlas de la mas grave a la mas aguda antes de guardar armonia
+        octava=[octavas[0]]
+        tiempos_armonias=[]
+        for t in range(1,len(tiempos)):
+                tiempo_new=tiempos[t]
+                if(tiempo_new-tiempo_actual)==0:#significa que seguimos en el mismo tiempo actual.
+                        armonia.append(notas[t])
+                        tonos.append(frecuencias[t])
+                        octava.append(octavas[t])
+                        tiempo_actual=tiempos[t]#acualizamos tiempos_old.
+                else: #significa que cambiamos de tiempo.
+                        tiempo_actual=tiempos[t]#actualizamos tiempos_old.
+                        #reordenamos las notas en armonia de menor tono a mayor tono:
+                        tonos_ordenados=np.sort(tonos)
+                        octava_ordenada=[]
+                        armonia_ordenada=[]
+                        for f,tono in enumerate(tonos_ordenados):
+                                indice=tonos.index(tono)
+                                armonia_ordenada.append(armonia[indice])
+                                octava_ordenada.append(octava[indice])
+                        if len(armonia)>=2:#consideramos armonia si son 2 o mas sonidos que suenan simultaneos.
+                                tiempos_armonias.append(tiempos[t-1])#es el tiempo en el que ocurrio esa armonia
+                                armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada solo si la armonia tiene 2 o mas notas.
+                                #Agrego nodos al grafo:
+                                for n,nota in enumerate(armonia_ordenada):
+                                        G.add_node(nota)
+                                        G.node[nota]['freq'] = tonos_ordenados[n]
+                                        G.node[nota]['octava'] = octava_ordenada[n]
+                                        G.node[nota]['duracion']=4.0 #por ahora no distinguimos duracion en las armonias
+                        armonia=[notas[t]]
+                        tonos=[frecuencias[t]]
+                        octava=[octavas[t]]
+                        
+        #Agregamos los enlaces al grafo:
+        #Los enlaces se haran si dos notas pertenecen a una misma armonia. Los enlaces son no dirigidos.
+        
+        for a,armonia in enumerate(armonias):
+                for n in range (0,len(armonia)):
+                        if G.has_edge(armonia[-1+n],armonia[n]):
+                                G[armonia[-1+n]][armonia[n]]['weight']+=1        
+                        else:
+                                G.add_edge(armonia[-1+n],armonia[n],weight=1)
+                                
+        #print(armonias,tiempos_armonias)
+        if G.number_of_nodes() !=0:     
+                return(G)
+        else:
+                return('No se encontraron armonias en esta voz')
+#---------------------------------------------------------------------------
+def f_armon(cancion, indexes):
+        #Toma como input una canción y la lista indexes con los indices de las voces a analizar.
+        #Encuentra todas las armonias que ocurrieron entre esos instrumentos seleccionados.
+        #Obtiene un vector de armonias(2 o mas notas simultaneas) y el momento en el cual ocurrieron.
+        #Construye grafo no dirigido, dos notas resultan enlazadas si pertenecen a una armonia, es decir,
+        #si hubo algun momento en el que ocurrieron simultaneamente. Además esos enlaces estan pesados.
+        #Notas: -si dos acordes estan ligados,los cuenta dos veces y no una vez sola.
+        #       -pueden aparecer autoloops cuando dos voces toquen la misma nota de forma simultanea.
+        #       -si no encuentra armonias porque es una linea melodica pura devuelve un string :'No se encontraron armonias en estas voces'
+
+        #Cancion
+        song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
+        instrumentos=[song.parts[indexes[i]].partName for i in range(0,len(indexes))]
+        partituras=[song.parts[indexes[i]] for i in range(0,len(indexes))]
+        compases=[partitura.getElementsByClass(msc.stream.Measure) for p,partitura in enumerate(partituras)]#todos los compases de las voces seleccionadas
+        Armonias_song=[]
+        Tiempos_armonias_song=[]
+
+        #Incializamos el grafo: los nodos seran notas. 
+        G=nx.Graph()
+
+        #Vamos a ir recorriendo por compas y dentro de cada compas recorremos por instrumento asi es mas ordenado, buscamos armonias dentro de cada compas y luego
+        #una vez que las encontramos las guardamos y seguimos al siguiente compas.
+        for numero_compas in range(0,len(compases[0])):
+                Notas_compas=[]   #contendra una lista por cada voz. Cada lista contiene las notas que esa voz fue tocando en en el compas actual
+                Tiempos_compas=[] #contendra una lista por cada voz. Cada lista contiene los tiempos en que sonaron esas notas en el compas actual.Ademas son tiempos ordenados.
+                Frecuencias_compas=[]
+                Octavas_compas=[]
+                Armonias=[]
+                Tiempos_armonias=[]
+                #print(numero_compas)
+                for inst in range(0,len(instrumentos)):
+                        compas=compases[inst][numero_compas]
+                        notas=[]
+                        tiempos=[]
+                        frecuencias=[]
+                        octavas=[]
+                        for i,el in enumerate(compas.flat):
+                                if isinstance(el,msc.note.Note):#si es una nota
+                                        nota_name=str(el.nameWithOctave)
+                                        notas.append(nota_name)
+                                        Notas_compas.append(nota_name)
+                                        
+                                        tiempo_nota=float(compas.offset+el.offset)
+                                        tiempos.append(tiempo_nota)
+                                        Tiempos_compas.append(tiempo_nota)
+                                        
+                                        frecuencias.append(el.pitch.frequency)
+                                        Frecuencias_compas.append(el.pitch.frequency)
+                                        
+                                        octavas.append(el.octave)
+                                        Octavas_compas.append(el.octave)
+                                        
+                                if isinstance(el,msc.chord.Chord):#si es un acorde
+                                        for nc,noteChord in enumerate(el):
+                                                nota_name=str(noteChord.nameWithOctave)
+                                                notas.append(nota_name)
+                                                Notas_compas.append(nota_name)
+                                                
+                                                tiempo_nota=float(compas.offset)+float(el.offset)
+                                                tiempos.append(tiempo_nota)
+                                                Tiempos_compas.append(tiempo_nota)
+                                                
+                                                frecuencias.append(noteChord.pitch.frequency)
+                                                Frecuencias_compas.append(noteChord.pitch.frequency)
+                                                
+                                                octavas.append(noteChord.octave)
+                                                Octavas_compas.append(noteChord.octave)
+                                                        
+                #Antes de buscar las armonias hay que ordenar los vectores Tiempos_notas, y Compas_notas de menor a mayor tiempo.
+                #reordenamos las notas en armonia de menor tiempo a mayor tiempo:
+                                                
+                Tiempos_compas_ordenada=np.sort(Tiempos_compas)
+                Notas_compas_ordenada=[]
+                Frecuencias_compas_ordenada=[]
+                Octavas_compas_ordenada=[]
+                
+                Tiempos_compas_ordenada_unicos=list(np.unique(Tiempos_compas_ordenada))
+                for z,tiempo_ordenado in enumerate(Tiempos_compas_ordenada_unicos):
+                        #indice=Tiempos_compas.index(tiempo_ordenado)
+                        indices=[i for i, e in enumerate(Tiempos_compas) if e == tiempo_ordenado]
+                        for i,indice in enumerate(indices):
+                                Notas_compas_ordenada.append(Notas_compas[indice])
+                                Frecuencias_compas_ordenada.append(Frecuencias_compas[indice])
+                                Octavas_compas_ordenada.append(Octavas_compas[indice])
+                                
+                #Reescribo las variables,con el ordenamiento segun el vector de tiempos.
+                Tiempos_compas=Tiempos_compas_ordenada
+                Notas_compas=Notas_compas_ordenada
+                Frecuencias_compas=Frecuencias_compas_ordenada
+                Octavas_compas=Octavas_compas_ordenada
+                        
+                #Listo: Ahora buscamos las armonias
+                #Antes de cambiar de compas buscamos armonias con Notas_compas y Tiempos_compas antes de vaciarlos y las guardamos en Armonias.
+        
+                #print(Notas_compas)
+                #Recorremos el vector de tiempos y nos fijamos todas las notas que caen en un mismo tiempo y las guardamos en la lista armonia y esta la guardamos en la lista armonias:
+
+                if len(Notas_compas)!=0: #para que saltee aquellos compases donde todas las voces estan en silencio.
+                        armonia=[Notas_compas[0]] #al principio armonia tiene la primer nota del compas
+                        tiempo_actual=Tiempos_compas[0]
+                        tonos=[Frecuencias_compas[0]]#contendra las frecuencias de las notas en armonia, para ordenarlas de la mas grave a la mas aguda antes de guardar armonia
+                        octava=[Octavas_compas[0]]
+                        
+                        for t in range(1,len(Tiempos_compas)):
+                                tiempo_new=Tiempos_compas[t]
+                                if(tiempo_new-tiempo_actual)==0:#significa que seguimos en el mismo tiempo actual.
+                                        armonia.append(Notas_compas[t])
+                                        tonos.append(Frecuencias_compas[t])
+                                        octava.append(Octavas_compas[t])
+                                        tiempo_actual=Tiempos_compas[t]#actualizamos tiempos_old.
+                                else: #significa que cambiamos de tiempo.
+                                        tiempo_actual=Tiempos_compas[t]#actualizamos tiempos_old.
+                                        #reordenamos las notas en armonia de menor tono a mayor tono:
+                                        tonos_ordenados=np.sort(tonos)
+                                        octava_ordenada=[]
+                                        armonia_ordenada=[]
+                                        for f,tono in enumerate(tonos_ordenados):
+                                                indice=tonos.index(tono)
+                                                armonia_ordenada.append(armonia[indice])
+                                                octava_ordenada.append(octava[indice])
+                                        if len(armonia)>=2:#consideramos armonia si son 2 o mas sonidos que suenan simultaneos.
+                                                Tiempos_armonias.append(Tiempos_compas[t-1])#es el tiempo en el que ocurrio esa armonia
+                                                Tiempos_armonias_song.append(Tiempos_compas[t-1])
+                                                Armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada solo si la armonia tiene 2 o mas notas.
+                                                Armonias_song.append(armonia_ordenada)
+                                                #Agrego nodos al grafo:
+                                                for n,nota in enumerate(armonia_ordenada):
+                                                        G.add_node(nota)
+                                                        G.node[nota]['freq'] = tonos_ordenados[n]
+                                                        G.node[nota]['octava'] = octava_ordenada[n]
+                                                        G.node[nota]['duracion']=4.0 #por ahora no distinguimos duracion en las armonias
+                                        armonia=[Notas_compas[t]]
+                                        tonos=[Frecuencias_compas[t]]
+                                        octava=[Octavas_compas[t]]
+                                
+                        #Agregamos los enlaces al grafo:
+                        #Los enlaces se haran si dos notas pertenecen a una misma armonia. Los enlaces son no dirigidos.
+        
+                        for a,armonia in enumerate(Armonias):
+                                for n in range (0,len(armonia)):
+                                        if G.has_edge(armonia[-1+n],armonia[n]):
+                                                G[armonia[-1+n]][armonia[n]]['weight']+=1        
+                                        else:
+                                                G.add_edge(armonia[-1+n],armonia[n],weight=1)
+        #print(Armonias_song,Tiempos_armonias_song)
+        if G.number_of_nodes() !=0:     
+                return(G)
+        else:
+                return('No se encontraron armonias entre estas voces')  
+#---------------------------------------------------------------------------
