@@ -8,6 +8,18 @@ import music21 as msc
 #---------------------------------------------------------------------------------------------------------
 #            FUNCIONES PARA ANALISIS DE MUSICA:
 #---------------------------------------------------------------------------------------------------------
+#Lista de funciones:
+# f_xml2graph (cancion, nombre_parte=None,modelo='melodia')
+# graficar (G, color_map='rainbow',layout='espiral', labels=False)
+# ql_2_fig (ql)
+# f_motifs_rhytmic (cancion,length,nombre_parte=None)
+# f_motifs_tonal (cancion,length,nombre_parte=None)
+# f_grado_dist_M (G)
+# f_grado_dist_H (G)
+# f_tabla (G,nombre)
+# f_xml2graph_armonia (cancion, index)
+# f_armon (cancion, indexes)
+#-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'): 
     # Toma como input una canción (y el nombre de la parte o voz) y
@@ -185,7 +197,6 @@ def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'):
                 G.add_edge(notas[i],notas[i+1],weight=1) # si el enlace no existe, se crea con peso 1
         Gs = G
     return(Gs)
-
 #-----------------------------------------------------------------------------------
 
 def graficar(G, color_map='rainbow',layout='espiral', labels=False):
@@ -237,8 +248,8 @@ def graficar(G, color_map='rainbow',layout='espiral', labels=False):
 		
 	plt.axis('off')
 	#plt.show()
-
 #-----------------------------------------------------------------------------------
+
 def ql_2_fig(ql):
     #Toma como input un valor de quarterlength y devuelve un str
     #que es la figura que le corresponde.
@@ -264,8 +275,8 @@ def indice(a_list, value):
         return a_list.index(value)
     except ValueError:
         return 'no está en la lista'
-
 #-----------------------------------------------------------------------------------
+
 def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	#Toma como input una canción (y el nombre de la parte o voz) y devuelve los motifs
 	#ritmicos de tamano length y la frecuencia de aparicion de cada uno.
@@ -350,7 +361,8 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	#plt.show() 
 	
 	return (motifs_rhytmic,frecuencias)
-#---------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------
+
 def f_motifs_tonal(cancion,length,nombre_parte=None):
 	#Toma como input una canción (y el nombre de la parte o voz) y devuelve los motifs
 	#tonales de tamano length y la frecuencia de aparicion de cada uno.
@@ -437,8 +449,8 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
 	#plt.show()       
 
 	return (motifs_tonal,frecuencias)
-
 #-----------------------------------------------------------------------------------
+
 def f_grado_dist_M(G):
     
     H=G.copy()
@@ -509,8 +521,8 @@ def f_grado_dist_M(G):
     plt.show()
    
     return(fig)
-
 #-----------------------------------------------------------------------------------
+
 def f_grado_dist_H(G):
     
     H=G.copy()
@@ -646,8 +658,8 @@ def f_tabla(G,nombre):
     
     
     return(haytabla)
-
 #-----------------------------------------------------------------------------------
+
 def f_xml2graph_armonia(cancion, index):
         #Toma como input una canción y el indice de la voz, y encuentra todas las armonias.
         #Obtiene un vector de armonias(2 o mas notas simultaneas) y el momento en el cual ocurrieron.
@@ -750,6 +762,7 @@ def f_xml2graph_armonia(cancion, index):
         else:
                 return('No se encontraron armonias en esta voz')
 #---------------------------------------------------------------------------
+
 def f_armon(cancion, indexes):
         #Toma como input una canción y la lista indexes con los indices de las voces a analizar.
         #Encuentra todas las armonias que ocurrieron entre esos instrumentos seleccionados.
@@ -901,4 +914,4 @@ def f_armon(cancion, indexes):
                 return(G)
         else:
                 return('No se encontraron armonias entre estas voces')
-##---------------------------------------------------------------------------
+#---------------------------------------------------------------------------
