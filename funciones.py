@@ -9,7 +9,7 @@ import music21 as msc
 #            FUNCIONES PARA ANALISIS DE MUSICA:
 #---------------------------------------------------------------------------------------------------------
 #Lista de funciones:
-# f_xml2graph (cancion, nombre_parte=None,modelo='melodia')
+# f_xml2graph (cancion, nombre_parte=0,modelo='melodia')
 # graficar (G, color_map='rainbow',layout='espiral', labels=False)
 # ql_2_fig (ql)
 # f_motifs_rhytmic (cancion,length,nombre_parte=None)
@@ -19,10 +19,10 @@ import music21 as msc
 # f_tabla (G,nombre)
 # f_xml2graph_armonia (cancion, index)
 # f_armon (cancion, indexes)
-# f_dist_escalas
+# f_dist_escalas (cancion, nombre_parte=0):
 #-----------------------------------------------------------------------------------
 
-def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'): 
+def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
     # Toma como input una canción (y el nombre de la parte o voz) y
     # devuelve un grafo G o una lista de grafos Gs si mas de una parte tiene el mismo nombre
     # cancion puede ser la ubicacion del archivo o directamente el Score de music21
@@ -40,10 +40,15 @@ def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'):
         lista_partes[i] = elem.partName # Guarda los nombres de las partes en la lista
 
     # Seleccion de la parte a usar
-    nombre_parte = nombre_parte or lista_partes[0] # Si no tuvo nombre_parte como input,toma la primera voz
-
+    if type(nombre_parte)==int:
+        try:
+            part = song.parts[nombre_parte]
+            print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[nombre_parte]))
+        except IndexError:
+            part = song.parts[0]
+            print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
     # Si el nombre de la parte no esta en la lista, toma la primera voz
-    if not nombre_parte in lista_partes: 
+    elif not nombre_parte in lista_partes: 
         part = song.parts[0]
         print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
         # Ademas devuelve el "error" de que el nombre no esta entre las partes, y dice que parte usa
@@ -917,7 +922,7 @@ def f_armon(cancion, indexes):
                 return('No se encontraron armonias entre estas voces')
 #---------------------------------------------------------------------------
 
-def f_dist_escalas(cancion, nombre_parte=None):
+def f_dist_escalas(cancion, nombre_parte=0):
     # Toma como input una canción (y el nombre de la parte o voz) y
     # devuelve un grafo G o una lista de grafos Gs si mas de una parte tiene el mismo nombre
     # cancion puede ser la ubicacion del archivo o directamente el Score de music21
@@ -937,10 +942,15 @@ def f_dist_escalas(cancion, nombre_parte=None):
         lista_partes[i] = elem.partName # Guarda los nombres de las partes en la lista
 
     # Seleccion de la parte a usar
-    nombre_parte = nombre_parte or lista_partes[0] # Si no tuvo nombre_parte como input,toma la primera voz
-
+    if type(nombre_parte)==int:
+        try:
+            part = song.parts[nombre_parte]
+            print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[nombre_parte]))
+        except IndexError:
+            part = song.parts[0]
+            print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
     # Si el nombre de la parte no esta en la lista, toma la primera voz
-    if not nombre_parte in lista_partes: 
+    elif not nombre_parte in lista_partes: 
         part = song.parts[0]
         print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
         # Ademas devuelve el "error" de que el nombre no esta entre las partes, y dice que parte usa
