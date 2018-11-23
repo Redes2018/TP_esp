@@ -19,6 +19,7 @@ import music21 as msc
 # f_tabla (G,nombre)
 # f_xml2graph_armonia (cancion, index)
 # f_armon (cancion, indexes)
+# f_dist_escalas
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=None,modelo='melodia'): 
@@ -915,3 +916,150 @@ def f_armon(cancion, indexes):
         else:
                 return('No se encontraron armonias entre estas voces')
 #---------------------------------------------------------------------------
+
+def f_dist_escalas(cancion, nombre_parte=None):
+    # Toma como input una canción (y el nombre de la parte o voz) y
+    # devuelve un grafo G o una lista de grafos Gs si mas de una parte tiene el mismo nombre
+    # cancion puede ser la ubicacion del archivo o directamente el Score de music21
+    
+    # Cancion
+    if type(cancion)==msc.stream.Score:
+        song = cancion # Si la cancion ya es un stream.Score, se queda con eso
+    else:
+        song = msc.converter.parse(cancion) # Sino, lee la partitura, queda un elemento stream.Score
+    key = song.analyze('key')
+    tonica = msc.note.Note(key.tonic)
+
+    # Lista de nombres de las partes
+    Lp = len(song.parts) # Cantidad de partes (voces)
+    lista_partes = list(np.zeros(Lp)) # Crea una lista donde se van a guardar los nombres de las partes
+    for i,elem in enumerate(song.parts):
+        lista_partes[i] = elem.partName # Guarda los nombres de las partes en la lista
+
+    # Seleccion de la parte a usar
+    nombre_parte = nombre_parte or lista_partes[0] # Si no tuvo nombre_parte como input,toma la primera voz
+
+    # Si el nombre de la parte no esta en la lista, toma la primera voz
+    if not nombre_parte in lista_partes: 
+        part = song.parts[0]
+        print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+        # Ademas devuelve el "error" de que el nombre no esta entre las partes, y dice que parte usa
+    else:
+        indexes = [index for index, name in enumerate(lista_partes) if name == nombre_parte]
+        if len(indexes)==1:
+            part = song.parts[indexes[0]]
+        else:
+            part = []
+            for j in indexes:
+                part.append(song.parts[j])
+        print('Partes: '+str(lista_partes)+'. Parte(s) seleccionada(s): '+str([lista_partes[i] for i in indexes]))
+        # Si el nombre si esta entre las partes, lo selecciona y tambien dice que parte usa
+
+    # Crea la(s) voz(ces) analizada(s) (todos los compases) y se queda con
+    # todas las notas incluyendo silencios con offset 'absoluto' (flat)
+    if type(part) == list:
+        voz = []
+        for parte in part:
+            voz.append(parte.getElementsByClass(msc.stream.Measure))
+        lista_dist = []
+        lista_dur = []
+        for voice in voz:
+            notes = [x for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+            tiempos = [x.offset for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+            indices = []
+
+            for i in range(len(notes)-1):
+                if tiempos[i+1] == tiempos[i]:
+                    if type(notes[i+1])==msc.note.Rest:
+                        indices.append(i+1)
+                    elif type(notes[i])==msc.note.Rest:
+                        indices.append(i)
+                    elif (notes[i+1].pitch.frequency > notes[i].pitch.frequency):
+                        indices.append(i)
+                    else:
+                        indices.append(i+1)
+
+            indices = [x for x in indices[::-1]]
+
+            for index in indices:
+                del notes[index]
+            intervalos = [msc.interval.Interval(tonica, nota) for nota in notes if type(nota)==msc.note.Note]
+            distancias = [i.semitones for i in intervalos]
+            duraciones = [nota.quarterLength for nota in notes if type(nota)==msc.note.Note]
+            lista_dist.append(distancias)
+            lista_dur.append(duraciones)
+    else:
+        voz = part.getElementsByClass(msc.stream.Measure)
+        notas = [x for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+        tiempos = [x.offset for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+        indices = []
+
+        for i in range(len(notas)-1):
+            if tiempos[i+1] == tiempos[i]:
+                if type(notas[i+1])==msc.note.Rest:
+                    indices.append(i+1)
+                elif type(notas[i])==msc.note.Rest:
+                    indices.append(i)
+                elif (notas[i+1].pitch.frequency > notas[i].pitch.frequency):
+                    indices.append(i)
+                else:
+                    indices.append(i+1)
+
+        indices = [x for x in indices[::-1]]
+
+        for index in indices:
+            del notas[index]
+        intervalos = [msc.interval.Interval(tonica, nota) for nota in notas if type(nota)==msc.note.Note]
+        distancias = [i.semitones for i in intervalos]
+        duraciones = [nota.quarterLength for nota in notas if type(nota)==msc.note.Note]
+
+    # Creamos el grafo dirigido G o lista de grafos dirigidos Gs si hay mas de una voz
+    if type(part) == list:
+        Gs = [] # Va a ser una lista de grafos, uno por cada voz analizada
+        for j,dist in enumerate(lista_dist):
+            G = nx.DiGraph()
+            oct_min = int(min((np.floor(np.array(dist)/12))))
+            # Nodos
+            # Recorremos todas las notas de la voz
+            for i,d in enumerate(dist):
+                nota_name = str(d)+'/'+str(lista_dur[j][i])
+                if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
+                    G.add_node(nota_name)
+                    G.node[nota_name]['freq'] = 440*2**(d/12) # Pongo como frecuencia falsa de tonica: 440
+                    G.node[nota_name]['octava'] = int(np.floor(d/12)) - oct_min+1
+                    G.node[nota_name]['duracion'] = lista_dur[j][i]
+                dist[i] = nota_name
+
+            # Enlaces pesados
+            L = len(dist)
+            for i in range(L-1):  # recorremos desde la primera hasta la anteultima nota, uniendo sucesivas
+                if G.has_edge(dist[i],dist[i+1]):
+                    G[dist[i]][dist[i+1]]['weight']+=1 # si el enlace ya existe, se le agrega +1 al peso
+                else:
+                    G.add_edge(dist[i],dist[i+1],weight=1) # si el enlace no existe, se crea con peso 1
+            Gs.append(G)
+    else:
+        G = nx.DiGraph()
+
+        oct_min = int(min((np.floor(np.array(distancias)/12))))
+
+        # Nodos
+        # Recorremos todas las notas de la voz
+        for i,d in enumerate(distancias):
+            nota_name = str(d)+'/'+str(duraciones[i])
+            if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
+                G.add_node(nota_name)
+                G.node[nota_name]['freq'] = 440*2**(d/12)
+                G.node[nota_name]['octava'] = int(np.floor(d/12)) - oct_min+1
+                G.node[nota_name]['duracion'] = duraciones[i]
+            distancias[i] = nota_name
+        
+        # Enlaces pesados
+        L = len(distancias)
+        for i in range(L-1):  # recorremos desde la primera hasta la anteultima nota, uniendo sucesivas
+            if G.has_edge(distancias[i],distancias[i+1]):
+                G[distancias[i]][distancias[i+1]]['weight']+=1 # si el enlace ya existe, se le agrega +1 al peso
+            else:
+                G.add_edge(distancias[i],distancias[i+1],weight=1) # si el enlace no existe, se crea con peso 1
+        Gs = G
+    return(Gs)
