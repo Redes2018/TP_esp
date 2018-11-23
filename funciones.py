@@ -12,8 +12,8 @@ import music21 as msc
 # f_xml2graph (cancion, nombre_parte=0,modelo='melodia')
 # graficar (G, color_map='rainbow',layout='espiral', labels=False)
 # ql_2_fig (ql)
-# f_motifs_rhytmic (cancion,length,nombre_parte=None)
-# f_motifs_tonal (cancion,length,nombre_parte=None)
+# f_motifs_rhytmic (cancion,length,nombre_parte=0)
+# f_motifs_tonal (cancion,length,nombre_parte=0)
 # f_grado_dist_M (G)
 # f_grado_dist_H (G)
 # f_tabla (G,nombre)
@@ -23,23 +23,25 @@ import music21 as msc
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
-    # Toma como input una canción (y el nombre de la parte o voz) y
-    # devuelve un grafo G o una lista de grafos Gs si mas de una parte tiene el mismo nombre
-    # cancion puede ser la ubicacion del archivo o directamente el Score de music21
+    # Toma como input una canción y devuelve un grafo o una lista de grafos si se repite el nombre
+    # cancion puede ser la ubicacion del archivo (str) o el Score de music21
+    # Opcional: nombre_parte puede ser el nombre (str) o su indice
+    # Opcional: modelo puede ser melodia o ritmo
     
     # Cancion
     if type(cancion)==msc.stream.Score:
         song = cancion # Si la cancion ya es un stream.Score, se queda con eso
     else:
-        song = msc.converter.parse(cancion) # Sino, lee la partitura, queda un elemento stream.Score
+        song = msc.converter.parse(cancion) # Sino lee la partitura, queda un elemento stream.Score
 
     # Lista de nombres de las partes
     Lp = len(song.parts) # Cantidad de partes (voces)
-    lista_partes = list(np.zeros(Lp)) # Crea una lista donde se van a guardar los nombres de las partes
+    lista_partes = list(np.zeros(Lp))
     for i,elem in enumerate(song.parts):
         lista_partes[i] = elem.partName # Guarda los nombres de las partes en la lista
 
     # Seleccion de la parte a usar
+    # Si el input es el indice (int) intenta encontrarlo entre las partes; si no lo encuentra, selecciona la primera voz
     if type(nombre_parte)==int:
         try:
             part = song.parts[nombre_parte]
@@ -47,11 +49,10 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
         except IndexError:
             part = song.parts[0]
             print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-    # Si el nombre de la parte no esta en la lista, toma la primera voz
+    # Si el input es nombre (str) y no está entre las partes, selecciona la primera voz
     elif not nombre_parte in lista_partes: 
         part = song.parts[0]
         print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-        # Ademas devuelve el "error" de que el nombre no esta entre las partes, y dice que parte usa
     else:
         indexes = [index for index, name in enumerate(lista_partes) if name == nombre_parte]
         if len(indexes)==1:
@@ -61,10 +62,11 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
             for j in indexes:
                 part.append(song.parts[j])
         print('Partes: '+str(lista_partes)+'. Parte(s) seleccionada(s): '+str([lista_partes[i] for i in indexes]))
-        # Si el nombre si esta entre las partes, lo selecciona y tambien dice que parte usa
+    # En cualquier caso, devuelve una lista de partes y cuál selecciona (y aclaraciones neccesarias de cada caso)
 
     # Crea la(s) voz(ces) analizada(s) (todos los compases) y se queda con
     # todas las notas incluyendo silencios con offset 'absoluto' (flat)
+    # IMPORTANTE: Si la voz contiene sonidos simultáneos, sólo se queda con el más agudo
     if type(part) == list:
         voz = []
         for parte in part:
@@ -72,12 +74,50 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
         lista_notas = []
         for voice in voz:
             notes = [x for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+            tiempos = [x.offset for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+            indices = []
+
+            for i in range(len(notes)-1):
+                if tiempos[i+1] == tiempos[i]:
+                    if type(notes[i+1])==msc.note.Rest:
+                        indices.append(i+1)
+                    elif type(notes[i])==msc.note.Rest:
+                        indices.append(i)
+                    elif (notes[i+1].pitch.frequency > notes[i].pitch.frequency):
+                        indices.append(i)
+                    else:
+                        indices.append(i+1)
+
+            indices = [x for x in indices[::-1]]
+
+            for index in indices:
+                del notes[index]
             lista_notas.append(notes)
+
     else:
         voz = part.getElementsByClass(msc.stream.Measure)
         notas = [x for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+        tiempos = [x.offset for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+        indices = []
 
-    # Creamos el grafo dirigido G o lista de grafos dirigidos Gs si hay mas de una voz
+        for i in range(len(notas)-1):
+            if tiempos[i+1] == tiempos[i]:
+                if type(notas[i+1])==msc.note.Rest:
+                    indices.append(i+1)
+                elif type(notas[i])==msc.note.Rest:
+                    indices.append(i)
+                elif (notas[i+1].pitch.frequency > notas[i].pitch.frequency):
+                    indices.append(i)
+                else:
+                    indices.append(i+1)
+
+        indices = [x for x in indices[::-1]]
+
+        for index in indices:
+            del notas[index]
+    # Crea una lista de notas y silencios (notas) o una lista de listas (por cada voz) (lista_notas)
+
+    # Crea el grafo dirigido, o lista de grafos dirigidos Gs si hay mas de una voz
     if type(part) == list:
         Gs = [] # Va a ser una lista de grafos, uno por cada voz analizada
         for notas in lista_notas:
@@ -283,7 +323,7 @@ def indice(a_list, value):
         return 'no está en la lista'
 #-----------------------------------------------------------------------------------
 
-def f_motifs_rhytmic(cancion,length,nombre_parte=None):
+def f_motifs_rhytmic(cancion,length,nombre_parte=0):
 	#Toma como input una canción (y el nombre de la parte o voz) y devuelve los motifs
 	#ritmicos de tamano length y la frecuencia de aparicion de cada uno.
 	#Realiza histograma, utilizando un cierto motif_umbral(empezamos a considerarlo motif
@@ -300,19 +340,26 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	
 	for i,elem in enumerate(song.parts):
 		lista_partes[i] = elem.partName #Guarda los nombres de las partes en la lista
-			
-	nombre_parte=nombre_parte or lista_partes[0]
 	
-	if not nombre_parte in lista_partes: #Si el nombre de la parte no esta en la lista, toma la primera voz
+	# Seleccion de la parte a usar
+	# Si el input es el indice (int) intenta encontrarlo entre las partes; si no lo encuentra, selecciona la primera voz
+	if type(nombre_parte)==int:
+		try:
+			part = song.parts[nombre_parte]
+			print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[nombre_parte]))
+		except IndexError:
+			part = song.parts[0]
+			print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+	# Si el input es nombre (str) y no está entre las partes, selecciona la primera voz
+	elif not nombre_parte in lista_partes: 
 		part = song.parts[0]
 		print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-		#Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
 	else:
 		j = lista_partes.index(nombre_parte)
 		part = song.parts[j]
-		print('Parte seleccionada: '+str(lista_partes[j]))
-		#Si el nombre sí esta entre las partes, lo selecciona y tambien te dice que parte usa
-			
+		print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[j]))
+	# En cualquier caso, devuelve una lista de partes y cuál selecciona (y aclaraciones neccesarias de cada caso)
+
 	#Primer instrumento
 	voz = part.getElementsByClass(msc.stream.Measure)#todos los compases de la parte voz seleccionada
 	motifs=[]
@@ -369,7 +416,7 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=None):
 	return (motifs_rhytmic,frecuencias)
 #-----------------------------------------------------------------------------------
 
-def f_motifs_tonal(cancion,length,nombre_parte=None):
+def f_motifs_tonal(cancion,length,nombre_parte=0):
 	#Toma como input una canción (y el nombre de la parte o voz) y devuelve los motifs
 	#tonales de tamano length y la frecuencia de aparicion de cada uno.
 	#Realiza histograma, utilizando un cierto motif_umbral(empezamos a considerarlo motif
@@ -387,17 +434,24 @@ def f_motifs_tonal(cancion,length,nombre_parte=None):
 	for i,elem in enumerate(song.parts):
 		lista_partes[i] = elem.partName #Guarda los nombres de las partes en la lista
 			
-	nombre_parte=nombre_parte or lista_partes[0]
-	
-	if not nombre_parte in lista_partes: #Si el nombre de la parte no esta en la lista, toma la primera voz
+	# Seleccion de la parte a usar
+	# Si el input es el indice (int) intenta encontrarlo entre las partes; si no lo encuentra, selecciona la primera voz
+	if type(nombre_parte)==int:
+		try:
+			part = song.parts[nombre_parte]
+			print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[nombre_parte]))
+		except IndexError:
+			part = song.parts[0]
+			print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+	# Si el input es nombre (str) y no está entre las partes, selecciona la primera voz
+	elif not nombre_parte in lista_partes: 
 		part = song.parts[0]
 		print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-		#Ademas devuelve el "error" de que el nombre no esta entre las partes, y te dice que parte usa
 	else:
 		j = lista_partes.index(nombre_parte)
 		part = song.parts[j]
-		print('Parte seleccionada: '+str(lista_partes[j]))
-		#Si el nombre sí esta entre las partes, lo selecciona y tambien te dice que parte usa
+		print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[j]))
+	# En cualquier caso, devuelve una lista de partes y cuál selecciona (y aclaraciones neccesarias de cada caso)
 			
 	#Primer instrumento
 	voz = part.getElementsByClass(msc.stream.Measure)#todos los compases de la parte voz seleccionada
@@ -923,9 +977,9 @@ def f_armon(cancion, indexes):
 #---------------------------------------------------------------------------
 
 def f_dist_escalas(cancion, nombre_parte=0):
-    # Toma como input una canción (y el nombre de la parte o voz) y
-    # devuelve un grafo G o una lista de grafos Gs si mas de una parte tiene el mismo nombre
-    # cancion puede ser la ubicacion del archivo o directamente el Score de music21
+    # Toma como input una canción y devuelve un grafo o una lista de grafos si se repite el nombre
+    # cancion puede ser la ubicacion del archivo (str) o el Score de music21
+    # Opcional: nombre_parte puede ser el nombre (str) o su indice
     
     # Cancion
     if type(cancion)==msc.stream.Score:
@@ -942,6 +996,7 @@ def f_dist_escalas(cancion, nombre_parte=0):
         lista_partes[i] = elem.partName # Guarda los nombres de las partes en la lista
 
     # Seleccion de la parte a usar
+    # Si el input es el indice (int) intenta encontrarlo entre las partes; si no lo encuentra, selecciona la primera voz
     if type(nombre_parte)==int:
         try:
             part = song.parts[nombre_parte]
@@ -949,11 +1004,10 @@ def f_dist_escalas(cancion, nombre_parte=0):
         except IndexError:
             part = song.parts[0]
             print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-    # Si el nombre de la parte no esta en la lista, toma la primera voz
+    # Si el input es nombre (str) y no está entre las partes, selecciona la primera voz
     elif not nombre_parte in lista_partes: 
         part = song.parts[0]
         print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
-        # Ademas devuelve el "error" de que el nombre no esta entre las partes, y dice que parte usa
     else:
         indexes = [index for index, name in enumerate(lista_partes) if name == nombre_parte]
         if len(indexes)==1:
@@ -963,10 +1017,11 @@ def f_dist_escalas(cancion, nombre_parte=0):
             for j in indexes:
                 part.append(song.parts[j])
         print('Partes: '+str(lista_partes)+'. Parte(s) seleccionada(s): '+str([lista_partes[i] for i in indexes]))
-        # Si el nombre si esta entre las partes, lo selecciona y tambien dice que parte usa
+    # En cualquier caso, devuelve una lista de partes y cuál selecciona (y aclaraciones neccesarias de cada caso)
 
     # Crea la(s) voz(ces) analizada(s) (todos los compases) y se queda con
-    # todas las notas incluyendo silencios con offset 'absoluto' (flat)
+    # todas las notas sin silencios con offset 'absoluto' (flat)
+    # IMPORTANTE: Si la voz contiene sonidos simultáneos, sólo se queda con el más agudo
     if type(part) == list:
         voz = []
         for parte in part:
@@ -974,17 +1029,13 @@ def f_dist_escalas(cancion, nombre_parte=0):
         lista_dist = []
         lista_dur = []
         for voice in voz:
-            notes = [x for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
-            tiempos = [x.offset for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+            notes = [x for x in voice.flat if type(x)==msc.note.Note]
+            tiempos = [x.offset for x in voice.flat if type(x)==msc.note.Note]
             indices = []
 
             for i in range(len(notes)-1):
                 if tiempos[i+1] == tiempos[i]:
-                    if type(notes[i+1])==msc.note.Rest:
-                        indices.append(i+1)
-                    elif type(notes[i])==msc.note.Rest:
-                        indices.append(i)
-                    elif (notes[i+1].pitch.frequency > notes[i].pitch.frequency):
+                    if (notes[i+1].pitch.frequency > notes[i].pitch.frequency):
                         indices.append(i)
                     else:
                         indices.append(i+1)
@@ -993,24 +1044,20 @@ def f_dist_escalas(cancion, nombre_parte=0):
 
             for index in indices:
                 del notes[index]
-            intervalos = [msc.interval.Interval(tonica, nota) for nota in notes if type(nota)==msc.note.Note]
+            intervalos = [msc.interval.Interval(tonica, nota) for nota in notes]
             distancias = [i.semitones for i in intervalos]
-            duraciones = [nota.quarterLength for nota in notes if type(nota)==msc.note.Note]
+            duraciones = [nota.quarterLength for nota in notes]
             lista_dist.append(distancias)
             lista_dur.append(duraciones)
     else:
         voz = part.getElementsByClass(msc.stream.Measure)
-        notas = [x for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
-        tiempos = [x.offset for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+        notas = [x for x in voz.flat if type(x)==msc.note.Note]
+        tiempos = [x.offset for x in voz.flat if type(x)==msc.note.Note]
         indices = []
 
         for i in range(len(notas)-1):
             if tiempos[i+1] == tiempos[i]:
-                if type(notas[i+1])==msc.note.Rest:
-                    indices.append(i+1)
-                elif type(notas[i])==msc.note.Rest:
-                    indices.append(i)
-                elif (notas[i+1].pitch.frequency > notas[i].pitch.frequency):
+                if (notas[i+1].pitch.frequency > notas[i].pitch.frequency):
                     indices.append(i)
                 else:
                     indices.append(i+1)
@@ -1019,9 +1066,10 @@ def f_dist_escalas(cancion, nombre_parte=0):
 
         for index in indices:
             del notas[index]
-        intervalos = [msc.interval.Interval(tonica, nota) for nota in notas if type(nota)==msc.note.Note]
+        intervalos = [msc.interval.Interval(tonica, nota) for nota in notas]
         distancias = [i.semitones for i in intervalos]
-        duraciones = [nota.quarterLength for nota in notas if type(nota)==msc.note.Note]
+        duraciones = [nota.quarterLength for nota in notas]
+    # Crea una lista de distancias en st (distancias) o una lista de listas (por cada voz) (lista_dist)
 
     # Creamos el grafo dirigido G o lista de grafos dirigidos Gs si hay mas de una voz
     if type(part) == list:
