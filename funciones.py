@@ -723,16 +723,26 @@ def f_tabla(G,nombre):
 def f_xml2graph_armonia(cancion, index):
         #Toma como input una canción y el indice de la voz, y encuentra todas las armonias.
         #Obtiene un vector de armonias(2 o mas notas simultaneas) y el momento en el cual ocurrieron.
-        #Construye grafo no dirigido, dos notas resultan enlazadas si pertenecen a una armonia, es decir,
-        #si hubo algun momento en el que ocurrieron simultaneamente. Además esos enlaces estan pesados.
+        #Se le puede pedir que armonias graficar, con mayor-tamano_armonia y menor_tamano_armonia
+
+        #¿Que grafica?
+        #1)Construye un grafo G no dirigido con nx, dos notas resultan enlazadas si pertenecen a una armonia, es decir,
+        #si hubo algun momento en el que ocurrieron simultaneamente y que no sean la misma nota. Además esos enlaces estan pesados.
+        #2)Construye otro grafo con Igraph el cual es no dirigido. A difrencia del anterior acá graficamos en colores si son
+        #armonias de 2-3-4-5 o mas notas. Y los enlaces estan pesados por la aparicion de esa armonia. El tamano de los nodos
+        #se calculo segun el strength(es un grado pesado por el peso de los enlaces a ese nodo).El grosor del enlace es por su peso.
+        #3)Realiza histograma de las armonias
+        #4)Realiza otro grafo dirigido donde los nodos son acordes.
         #Notas: -si dos acordes estan ligados,los cuenta dos veces y no una vez sola.
         #       -no hay autoloops lo cual tiene sentido si analizo una sola voz.
         #       -si encuentra armonias devuelve Grafo.
         #       -si no encuentra armonias porque es una linea melodica pura devuelve un string :'No se encontraron armonias en esta voz'
+        #       -elgrafico en igraph grafica armonias(cliques) de 2,3,4 y 5 los cuales todos estan formados por notas diferentes.
         
         
         #Cancion
         song = msc.converter.parse(cancion)
+
       
         #Instrumento
         part=song.parts[index]
@@ -765,8 +775,11 @@ def f_xml2graph_armonia(cancion, index):
                                         
         #Listo: tenemos tres listas: notas,tiempos,frecuencias.
         #print(notas,tiempos)
-        #Incializamos el grafo: los nodos seran notas. 
+        #Incializamos el grafo en nx y en ig: los nodos seran notas. 
         G=nx.Graph()
+        I=ig.Graph()
+        Inodos=[]
+        numero_nodo=-1
         
         #Recorremos el vector de tiempos y nos fijamos todas las notas que caen en un mismo tiempo y las guardamos en la lista armonia y esta la guardamos en la lista armonias:
         armonias=[] #lista de armonia
@@ -776,6 +789,9 @@ def f_xml2graph_armonia(cancion, index):
         tonos=[frecuencias[0]]#contendra las frecuencias de las notas en armonia, para ordenarlas de la mas grave a la mas aguda antes de guardar armonia
         octava=[octavas[0]]
         tiempos_armonias=[]
+        menor_tamano_armonia=3 #indicamos cual es el tamano minimo de armonias a graficar
+        mayor_tamano_armonia=5 #indicamos cual es el tamano maximo de armonias a graficar
+        
         for t in range(1,len(tiempos)):
                 tiempo_new=tiempos[t]
                 if(tiempo_new-tiempo_actual)==0:#significa que seguimos en el mismo tiempo actual.
@@ -793,45 +809,182 @@ def f_xml2graph_armonia(cancion, index):
                                 indice=tonos.index(tono)
                                 armonia_ordenada.append(armonia[indice])
                                 octava_ordenada.append(octava[indice])
-                        if len(armonia)>=2:#consideramos armonia si son 2 o mas sonidos que suenan simultaneos.
+                        if (len(armonia)>=2 and len(set(armonia))==len(armonia)):#consideramos armonia si son 2 o mas sonidos que suenan simultaneos y 3 sonidos diferentes como minimo.
                                 tiempos_armonias.append(tiempos[t-1])#es el tiempo en el que ocurrio esa armonia
-                                armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada solo si la armonia tiene 2 o mas notas.
+                                armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada 
                                 #Agrego nodos al grafo:
                                 for n,nota in enumerate(armonia_ordenada):
                                         G.add_node(nota)
                                         G.node[nota]['freq'] = tonos_ordenados[n]
                                         G.node[nota]['octava'] = octava_ordenada[n]
                                         G.node[nota]['duracion']=4.0 #por ahora no distinguimos duracion en las armonias
+                                        if ((nota in Inodos)==False and len(armonia)>menor_tamano_armonia-1):#solo agrega el nodo si este no aparecio nunca y nodos en armnonias de mas de 2 notas.
+                                                numero_nodo=numero_nodo+1
+                                                I.add_vertex(numero_nodo)
+                                                I.vs[numero_nodo]["name"]=nota
+                                                Inodos.append(nota)
+                                                I.vs[numero_nodo]["freq"]= tonos_ordenados[n]
+                                                I.vs[numero_nodo]["octava"]= octava_ordenada[n]
+                                                I.vs[numero_nodo]["duracion"]=4.0
                         armonia=[notas[t]]
                         tonos=[frecuencias[t]]
                         octava=[octavas[t]]
                         
         #Agregamos los enlaces al grafo:
         #Los enlaces se haran si dos notas pertenecen a una misma armonia. Los enlaces son no dirigidos.
+        #Aca es donde si el acorde es de tres notas distintas formamos por ej un 3-clique, si es de 4 notas distintas un 4-clique y asi...
         
         for a,armonia in enumerate(armonias):
                 for n in range (0,len(armonia)):
-                        if G.has_edge(armonia[-1+n],armonia[n]):
-                                G[armonia[-1+n]][armonia[n]]['weight']+=1        
-                        else:
-                                G.add_edge(armonia[-1+n],armonia[n],weight=1)
-                                
+                        for m in range(n+1,len(armonia)):
+                                if (G.has_edge(armonia[n],armonia[m])):
+                                        G[armonia[n]][armonia[m]]['weight']+=1        
+                                else:
+                                        G.add_edge(armonia[n],armonia[m],weight=1)
+
+        #1)Grafico con Igraph no dirigido:
+        #Agregamos los enlaces al grafo I:
+        numero_enlace=-1
+        color_dict= {"2":"purple","3": "blue", "4":"red","5":"green"}
+        armonias_unicas=[list(i) for i in set(tuple(i) for i in armonias)]
+        armonias_hist = [(x, armonias.count(x)) for x in armonias_unicas]
+        
+        colores_edges=[]
+        pesos_edges=[]
+        
+        for a,armonia in enumerate(armonias_hist):
+                tamano_armonia=len(armonia[0])
+                if (tamano_armonia>menor_tamano_armonia-1 and tamano_armonia<mayor_tamano_armonia+1): #solo agregamos armonias de 2-3-4-5
+                        for n in range (0,len(armonia[0])):
+                                for m in range(n+1,len(armonia[0])):
+                                        numero_enlace=numero_enlace+1
+                                        edge_name=(armonia[0][n],armonia[0][m])
+                                        I.add_edge(armonia[0][n],armonia[0][m])
+                                        I.es[numero_enlace]['tamano']=tamano_armonia
+                                        I.es[numero_enlace]['color']=color_dict[str(tamano_armonia)]
+                                        I.es[numero_enlace]['weigth']=armonia[1]
+                                        pesos_edges.append(armonia[1])
+                                        colores_edges.append(color_dict[str(tamano_armonia)])
+        #Tamano de nodos:(pesados)
+        tamano_nodos=I.strength()
+        tamano_nodos=tamano_nodos+50*np.ones(len(tamano_nodos))
+        print(tamano_nodos)
+        
+        #Propiedades del grafo
+        layout = I.layout("random")
+        visual_style = {}
+        visual_style["vertex_size"] = tamano_nodos
+        visual_style["vertex_label"] = Inodos
+        visual_style["vertex_color"] = 'black'
+        visual_style["vertex_label_color"] = 'white'
+        visual_style["vertex_label_size"] = 30
+        visual_style["edge_width"] = pesos_edges
+        visual_style["edge_color"] = colores_edges
+        visual_style["edge_label"] = pesos_edges
+        visual_style["layout"] = layout
+        visual_style["bbox"] = (3000, 3000)
+        visual_style["margin"] = 300
+        ig.plot(I, **visual_style)
+        ig.plot(I, "armonias_undirected.png", **visual_style)
+
+        #Histograma de armonias
+        plt.figure
+        yTick_position=[]
+        yTick_name=[]
+        contador=-1
+        contador_tick=-0.5
+        dtype = [('name', 'S28'), ('count', int)]
+        armonias_tamanos=[len(armonias_unicas[i]) for i in range(0,len(armonias_unicas))]
+        if len(armonias_tamanos)>0:
+                max_tamano=np.max(armonias_tamanos)
+                min_tamano=np.min(armonias_tamanos)
+   
+        for t,tamano in enumerate(np.arange(mayor_tamano_armonia,menor_tamano_armonia-1,-1)):
+                armonias_T=[] #lista con pares
+                for a, armonia in enumerate(armonias_hist):
+                        if len(armonias_hist[a][0])==tamano:
+                                armonias_T.append((str(armonias_hist[a][0]),int(armonias_hist[a][1])))       
+                armonias_T=np.array(armonias_T,dtype=dtype)
+                armonias_T=np.sort(armonias_T,order='count') #lo ordeno segun la propiedad count
+                armonias_T=list(armonias_T)
+                for j,d in enumerate(armonias_T):
+                        contador=contador+1
+                        contador_tick=contador_tick+1
+                        armonia=str(armonias_T[j][0],'utf-8')
+                        count_value=int(armonias_T[j][1])
+                        plt.barh(contador,count_value,color=color_dict[str(tamano)],edgecolor='black')
+                        yTick_position.append(contador_tick)
+                        yTick_name.append(armonias_T[j][0])
+        plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=8)
+        plt.title('2-3-4-5 Armonias',fontsize=20)
+        plt.show()
+
+        #2)Grafico con Igraph dirigido:
+        
+        J=ig.Graph(directed=True)
+        numero_nodo=-1
+        Jnodos=[]
+        color_nodos=[]
+        if len(armonias)>0: #si no encontro armonias no hace nada 
+                #Creo nodos:
+                for a in range(0,len(armonias)):
+                        tamano_armonia=len(armonias[a])
+                        if (tamano_armonia>menor_tamano_armonia-1 and tamano_armonia<mayor_tamano_armonia+1):
+                                if (str(armonias[a]) in Jnodos)==False:
+                                        numero_nodo=numero_nodo+1
+                                        J.add_vertex(numero_nodo)
+                                        J.vs[numero_nodo]["name"]=str(armonias[a])
+                                        Jnodos.append(str(armonias[a]))
+                                        color_nodos.append(color_dict[str(tamano_armonia)])
+                #Creo enlaces si encontro armonias del tamano buscado
+                if len(Jnodos)>0:
+                        #Creo enlaces
+                        J.add_edge(str(Jnodos[0]),str(Jnodos[1]))
+                        for a in range(1,len(Jnodos)-1):
+                                J.add_edge(str(Jnodos[a]),str(Jnodos[a+1]))
+                
+                        #Propiedades
+                        layout = J.layout("random")
+                        visual_style = {}
+                        visual_style["vertex_size"] = 120
+                        visual_style["vertex_label"] = Jnodos
+                        visual_style["vertex_color"] = 'black'
+                        visual_style["vertex_label_color"] = color_nodos
+                        visual_style["vertex_label_size"] = 10
+                        visual_style["edge_width"] = 4
+                        visual_style["layout"] = layout
+                        visual_style["bbox"] = (3000, 3000)
+                        visual_style["margin"] = 300
+                        ig.plot(J, **visual_style)
+                        ig.plot(J, "armonias_directed.png", **visual_style)
+                else:
+                        print('No se encontraron armonias del tamano buscado en esta voz')
+                               
         #print(armonias,tiempos_armonias)
         if G.number_of_nodes() !=0:     
                 return(G)
         else:
                 return('No se encontraron armonias en esta voz')
 #---------------------------------------------------------------------------
-
 def f_armon(cancion, indexes):
         #Toma como input una canción y la lista indexes con los indices de las voces a analizar.
         #Encuentra todas las armonias que ocurrieron entre esos instrumentos seleccionados.
         #Obtiene un vector de armonias(2 o mas notas simultaneas) y el momento en el cual ocurrieron.
-        #Construye grafo no dirigido, dos notas resultan enlazadas si pertenecen a una armonia, es decir,
-        #si hubo algun momento en el que ocurrieron simultaneamente. Además esos enlaces estan pesados.
+        #Se le puede pedir que armonias graficar, con mayor-tamano_armonia y menor_tamano_armonia.
+
+        #¿Que grafica?
+        #1)Construye un grafo G no dirigido con nx, dos notas resultan enlazadas si pertenecen a una armonia, es decir,
+        #si hubo algun momento en el que ocurrieron simultaneamente y que no sean la misma nota. Además esos enlaces estan pesados.
+        #2)Construye otro grafo con Igraph el cual es no dirigido. A difrencia del anterior acá graficamos en colores si son
+        #armonias de 2-3-4-5 o mas notas. Y los enlaces estan pesados por la aparicion de esa armonia. El tamano de los nodos
+        #se calculo segun el strength(es un grado pesado por el peso de los enlaces a ese nodo).El grosor del enlace es por su peso.
+        #3)Realiza histograma de las armonias
+        #4)Realiza otro grafo dirigido donde los nodos son acordes.
+        
         #Notas: -si dos acordes estan ligados,los cuenta dos veces y no una vez sola.
-        #       -pueden aparecer autoloops cuando dos voces toquen la misma nota de forma simultanea.
+        #       -pueden aparecer autoloops cuando dos voces toquen la misma nota de forma simultanea, pero esas armonias no las tenemos en cuenta.
         #       -si no encuentra armonias devuelve un string :'No se encontraron armonias entre estas voces'
+        #       -elgrafico en igraph grafica armonias(cliques) de 2,3,4 y 5 los cuales los elegimos para que tengan notas diferentes.
 
         #Cancion
         song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
@@ -840,9 +993,14 @@ def f_armon(cancion, indexes):
         compases=[partitura.getElementsByClass(msc.stream.Measure) for p,partitura in enumerate(partituras)]#todos los compases de las voces seleccionadas
         Armonias_song=[]
         Tiempos_armonias_song=[]
+        menor_tamano_armonia=2 #indicamos cual es el tamano minimo de armonias a graficar
+        mayor_tamano_armonia=5 #indicamos cual es el tamano maximo de armonias a graficar
 
-        #Incializamos el grafo: los nodos seran notas. 
+        #Incializamos el grafo en nx y en ig: los nodos seran notas. 
         G=nx.Graph()
+        I=ig.Graph()
+        Inodos=[]
+        numero_nodo=-1
 
         #Vamos a ir recorriendo por compas y dentro de cada compas recorremos por instrumento asi es mas ordenado, buscamos armonias dentro de cada compas y luego
         #una vez que las encontramos las guardamos y seguimos al siguiente compas.
@@ -945,7 +1103,7 @@ def f_armon(cancion, indexes):
                                                 indice=tonos.index(tono)
                                                 armonia_ordenada.append(armonia[indice])
                                                 octava_ordenada.append(octava[indice])
-                                        if len(armonia)>=2:#consideramos armonia si son 2 o mas sonidos que suenan simultaneos.
+                                        if (len(armonia)>=2 and len(set(armonia))==len(armonia)):#consideramos armonia si son 2 o mas sonidos que suenan simultaneos y sin repetir.
                                                 Tiempos_armonias.append(Tiempos_compas[t-1])#es el tiempo en el que ocurrio esa armonia
                                                 Tiempos_armonias_song.append(Tiempos_compas[t-1])
                                                 Armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada solo si la armonia tiene 2 o mas notas.
@@ -956,24 +1114,151 @@ def f_armon(cancion, indexes):
                                                         G.node[nota]['freq'] = tonos_ordenados[n]
                                                         G.node[nota]['octava'] = octava_ordenada[n]
                                                         G.node[nota]['duracion']=4.0 #por ahora no distinguimos duracion en las armonias
+                                                        if ((nota in Inodos)==False and len(armonia)>menor_tamano_armonia-1):#solo agrega el nodo si este no aparecio nunca y nodos en armnonias de mas de 2 notas.
+                                                                numero_nodo=numero_nodo+1
+                                                                I.add_vertex(numero_nodo)
+                                                                I.vs[numero_nodo]["name"]=nota
+                                                                Inodos.append(nota)
+                                                                I.vs[numero_nodo]["freq"]= tonos_ordenados[n]
+                                                                I.vs[numero_nodo]["octava"]= octava_ordenada[n]
+                                                                I.vs[numero_nodo]["duracion"]=4.0
                                         armonia=[Notas_compas[t]]
                                         tonos=[Frecuencias_compas[t]]
                                         octava=[Octavas_compas[t]]
                                 
-                        #Agregamos los enlaces al grafo:
+                        #Agregamos los enlaces al grafo G:
                         #Los enlaces se haran si dos notas pertenecen a una misma armonia. Los enlaces son no dirigidos.
         
                         for a,armonia in enumerate(Armonias):
                                 for n in range (0,len(armonia)):
-                                        if G.has_edge(armonia[-1+n],armonia[n]):
-                                                G[armonia[-1+n]][armonia[n]]['weight']+=1        
-                                        else:
-                                                G.add_edge(armonia[-1+n],armonia[n],weight=1)
+                                        for m in range(n+1,len(armonia)):
+                                                if (G.has_edge(armonia[n],armonia[m])):
+                                                        G[armonia[n]][armonia[m]]['weight']+=1        
+                                                else:
+                                                        G.add_edge(armonia[n],armonia[m],weight=1)
+
+        #Grafico con Igraph:
+        #Agregamos los enlaces al grafo I:
+        numero_enlace=-1
+        color_dict= {"2":"purple","3": "blue", "4":"red","5":"green"}
+        colores_edges=[]
+        pesos_edges=[]
+        Armonias_song_unicas=[list(i) for i in set(tuple(i) for i in Armonias_song)]
+        Armonias_hist = [(x, Armonias_song.count(x)) for x in Armonias_song_unicas]
+        Armonias_tamanos=[len(Armonias_song_unicas[i]) for i in range(0,len(Armonias_song_unicas))]
+        if len(Armonias_tamanos)>0:
+                max_tamano=np.max(Armonias_tamanos)
+                min_tamano=np.min(Armonias_tamanos)
+        
+        for a,armonia in enumerate(Armonias_hist):
+                tamano_armonia=len(armonia[0])
+                if (tamano_armonia>menor_tamano_armonia-1 and tamano_armonia<mayor_tamano_armonia+1): #solo agregamos armonias de 2-3-4-5
+                        for n in range (0,len(armonia[0])):
+                                for m in range(n+1,len(armonia[0])):
+                                        numero_enlace=numero_enlace+1
+                                        edge_name=(armonia[0][n],armonia[0][m])
+                                        I.add_edge(armonia[0][n],armonia[0][m])
+                                        I.es[numero_enlace]['tamano']=tamano_armonia
+                                        I.es[numero_enlace]['color']=color_dict[str(tamano_armonia)]
+                                        pesos_edges.append(armonia[1])
+                                        colores_edges.append(color_dict[str(tamano_armonia)])
+        #Tamano de nodos(pesados)
+        tamano_nodos=I.strength()
+        tamano_nodos=tamano_nodos+50*np.ones(len(tamano_nodos))
+        print(tamano_nodos)
+
+        #Propiedades del grafo
+        layout = I.layout("random")
+        visual_style = {}
+        visual_style["vertex_size"] = tamano_nodos
+        visual_style["vertex_label"] = Inodos
+        visual_style["vertex_color"] = 'black'
+        visual_style["vertex_label_color"] = 'white'
+        visual_style["vertex_label_size"] = 30
+        visual_style["edge_width"] = pesos_edges
+        visual_style["edge_color"] = colores_edges
+        visual_style["edge_label"] = pesos_edges
+        visual_style["layout"] = layout
+        visual_style["bbox"] = (3000, 3000)
+        visual_style["margin"] = 300
+        ig.plot(I, **visual_style)
+        ig.plot(I, "armonias_undirected.png", **visual_style)
+
+        #Histograma de armonias
+        plt.figure
+        yTick_position=[]
+        yTick_name=[]
+        contador=-1
+        contador_tick=-0.5
+        dtype = [('name', 'S28'), ('count', int)]
+   
+        for t,tamano in enumerate(np.arange(mayor_tamano_armonia,menor_tamano_armonia-1,-1)):
+                armonias_T=[] #lista con pares
+                for a, armonia in enumerate(Armonias_hist):
+                        if len(Armonias_hist[a][0])==tamano:
+                                armonias_T.append((str(Armonias_hist[a][0]),int(Armonias_hist[a][1])))        
+                armonias_T=np.array(armonias_T,dtype=dtype)
+                armonias_T=np.sort(armonias_T,order='count') #lo ordeno segun la propiedad count
+                armonias_T=list(armonias_T)
+                for j,d in enumerate(armonias_T):
+                        contador=contador+1
+                        contador_tick=contador_tick+1
+                        armonia=str(armonias_T[j][0],'utf-8')
+                        count_value=int(armonias_T[j][1])
+                        plt.barh(contador,count_value,color=color_dict[str(tamano)],edgecolor='black')
+                        yTick_position.append(contador_tick)
+                        yTick_name.append(armonias_T[j][0])
+        plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=8)
+        plt.title('2-3-4-5 Armonias',fontsize=20)
+        plt.show()
+
+        #2)Grafico con Igraph dirigido:
+        
+        J=ig.Graph(directed=True)
+        numero_nodo=-1
+        Jnodos=[]
+        color_nodos=[]
+        if len(Armonias_song)>0: #si no encontro armonias no hace nada  
+                #Creo nodos:
+                for a in range(0,len(Armonias_song)):
+                        tamano_armonia=len(Armonias_song[a])
+                        if (tamano_armonia>menor_tamano_armonia-1 and tamano_armonia<mayor_tamano_armonia+1):
+                                if (str(Armonias_song[a]) in Jnodos)==False:
+                                        numero_nodo=numero_nodo+1
+                                        J.add_vertex(numero_nodo)
+                                        J.vs[numero_nodo]["name"]=str(Armonias_song[a])
+                                        Jnodos.append(str(Armonias_song[a]))
+                                        color_nodos.append(color_dict[str(tamano_armonia)])
+        
+                #Creo enlaces si encontro armonias del tamano buscado
+                if len(Jnodos)>0:
+                        J.add_edge(str(Jnodos[0]),str(Jnodos[1]))
+                        for a in range(1,len(Jnodos)-1):
+                                J.add_edge(str(Jnodos[a]),str(Jnodos[a+1]))
+                        
+                        #Propiedades
+                        layout = J.layout("random")
+                        visual_style = {}
+                        visual_style["vertex_size"] = 120
+                        visual_style["vertex_label"] = Jnodos
+                        visual_style["vertex_color"] = 'black'
+                        visual_style["vertex_label_color"] = color_nodos
+                        visual_style["vertex_label_size"] = 10
+                        visual_style["edge_width"] = 4
+                        visual_style["layout"] = layout
+                        visual_style["bbox"] = (3000, 3000)
+                        visual_style["margin"] = 300
+                        ig.plot(J, **visual_style)
+                        ig.plot(J, "armonias_directed.png", **visual_style)
+                else:
+                        print('No se encontraron armonias del tamano buscado entre estas voces')
+        
         #print(Armonias_song,Tiempos_armonias_song)
         if G.number_of_nodes() !=0:     
                 return(G)
         else:
                 return('No se encontraron armonias entre estas voces')
+
 #---------------------------------------------------------------------------
 
 def f_dist_escalas(cancion, nombre_parte=0):
