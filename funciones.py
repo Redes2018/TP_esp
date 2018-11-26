@@ -19,7 +19,9 @@ import music21 as msc
 # f_tabla (G,nombre)
 # f_xml2graph_armonia (cancion, index)
 # f_armon (cancion, indexes)
-# f_dist_escalas (cancion, nombre_parte=0):
+# graficar_armonias_undirected(G, color_map='rainbow',layout='espiral')
+# graficar_armonias_directed(Armonias)
+# f_dist_escalas (cancion, nombre_parte=0)
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -630,11 +632,6 @@ def f_tabla(G,nombre):
     H=G.copy()
     nodos=H.nodes() 
     N=len(nodos)
-    
-    #calculo los grados que salen y entran de cada nodo
-    kgrados_out = [H.out_degree(nodo) for nodo in nodos]
-    kgrados_in = [H.in_degree(nodo) for nodo in nodos]
-
     # El grado medio se puede calcular mediante k_mean=2m/n, donde m es la cantidad de enlaces total y n la cant de nodos
     nodes = H.number_of_nodes()
     enlaces = H.number_of_edges()
@@ -645,6 +642,9 @@ def f_tabla(G,nombre):
         K_mean = 'NaN'
     
     if nx.is_directed(H)==True:
+        #calculo los grados que salen y entran de cada nodo
+        kgrados_out = [H.out_degree(nodo) for nodo in nodos]
+        kgrados_in = [H.in_degree(nodo) for nodo in nodos]
         #los hacemos para el out
         histograma_out = np.unique(kgrados_out,return_counts=True) #pesamos los grados con los valores de su histograma
         k_out = histograma_out[0] # grados sin repetir
