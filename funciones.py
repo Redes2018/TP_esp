@@ -1572,3 +1572,71 @@ def f_hierarchy(G): #grafica Ck vs K en log, y a partir de eso uno ve si es una 
     plt.ylabel('$C(k)$')
     plt.title('Bin lineal - Escala log')
     plt.show()
+#------------------------------------------------------------------------------
+def transitivity_motifs(G):
+        #Toma un grafico dirigido y busca todos los 3-cliques.
+        #Luego a cada clique le calcula su estado, que es un dibujo de como estan conectados:
+        #Ejemplo: -Si el clique es: A<-->B-->--C-->A el estado de ese clique seria: ['','-->','<--','-->','','-->']
+        #         -A cada clique le asignamos un id_clique que son 3 numeros de menor a mayor de acuerdo a la suma de grados in y out en cada nodo
+        #         -El clique ['','-->','<--','-->','','-->'] tendrá id_clique=[-1,0,1]
+        #Devuelve lista de 3-cliques y el estado de cada uno.
+        #Realiza histograma agrupando 3-cliques por id_clique.
+        
+        J=G.to_undirected()
+        enlaces=G.edges()
+        cliques=list(nx.enumerate_all_cliques(J))
+        k=3 #Tipo de k-cliques que queremos percolar.
+        cliques_k=[] #nos quedamos con los k_cliques.
+        for c,clique in enumerate(cliques):
+            if len(clique)==k:
+                cliques_k.append(clique)
+
+        estados_clique=[]
+        ids_clique=[]
+        for c in range(0,len(cliques_k)):
+                clique_actual=cliques_k[c]
+                #nodos
+                A=clique_actual[0]
+                B=clique_actual[1]
+                C=clique_actual[2]
+        
+                #Vector de estado clique:
+                enlaces_clique=[(A,C),(A,B),(B,A),(B,C),(C,B),(C,A)]
+                estado_clique=['','','','','','']
+                id_clique=np.zeros(k,dtype=int)#tres numeros de menor a mayor, con la suma de los grados de cada nodo, que puede ser:-2(salen 2) ,0(llega uno sale uno) o 2(llegan dos)
+                
+                for n in range(0,len(clique_actual)):
+                        for m in range(0,len(clique_actual)):
+                                if (n!=m) and (clique_actual[n],clique_actual[m]) in enlaces:
+                                        id_clique[n]=id_clique[n]-1
+                                        id_clique[m]=id_clique[m]+1
+                                        index=enlaces_clique.index((clique_actual[n],clique_actual[m]))
+                                        if index %2 ==0:
+                                                estado_clique[index]='<-'
+                                                
+                                        else:
+                                                estado_clique[index]='->'
+                id_clique=np.sort(id_clique)
+                ids_clique.append(list(id_clique))                
+                estados_clique.append(estado_clique)
+        #Histograma
+        transitivity_motifs=[list(i) for i in set(tuple(i) for i in ids_clique)]
+        hist_transitivity_motifs = [(x, ids_clique.count(x)) for x in transitivity_motifs]
+        plt.figure
+        yTick_position=[]
+        yTick_name=[]
+        contador=-1
+        contador_tick=-0.5
+   
+        for m, motif in enumerate(transitivity_motifs):
+                contador=contador+1
+                contador_tick=contador_tick+1
+                count_value=int(hist_transitivity_motifs[m][1])
+                plt.barh(contador,count_value,color='blue',edgecolor='black')
+                yTick_position.append(contador_tick)
+                yTick_name.append(str(motif))
+        plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=8)
+        plt.title('Transitivity '+str(k)+'-motifs',fontsize=20)
+        plt.show()
+
+        return(cliques_k,estados_clique)
