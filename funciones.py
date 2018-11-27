@@ -22,6 +22,8 @@ import music21 as msc
 # graficar_armonias_undirected(G, color_map='rainbow',layout='espiral')
 # graficar_armonias_directed(Armonias)
 # f_dist_escalas (cancion, nombre_parte=0)
+# f_full_graph(path)
+# f_hierarchy(G)
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -47,14 +49,14 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
     if type(nombre_parte)==int:
         try:
             part = song.parts[nombre_parte]
-            print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[nombre_parte]))
+            #print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[nombre_parte]))
         except IndexError:
             part = song.parts[0]
-            print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+            #print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
     # Si el input es nombre (str) y no está entre las partes, selecciona la primera voz
     elif not nombre_parte in lista_partes: 
         part = song.parts[0]
-        print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+        #print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
     else:
         indexes = [index for index, name in enumerate(lista_partes) if name == nombre_parte]
         if len(indexes)==1:
@@ -63,7 +65,7 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
             part = []
             for j in indexes:
                 part.append(song.parts[j])
-        print('Partes: '+str(lista_partes)+'. Parte(s) seleccionada(s): '+str([lista_partes[i] for i in indexes]))
+        #print('Partes: '+str(lista_partes)+'. Parte(s) seleccionada(s): '+str([lista_partes[i] for i in indexes]))
     # En cualquier caso, devuelve una lista de partes y cuál selecciona (y aclaraciones neccesarias de cada caso)
 
     # Crea la(s) voz(ces) analizada(s) (todos los compases) y se queda con
@@ -1415,3 +1417,70 @@ def f_dist_escalas(cancion, nombre_parte=0):
                 G.add_edge(distancias[i],distancias[i+1],weight=1) # si el enlace no existe, se crea con peso 1
         Gs = G
     return(Gs)
+
+#---------------------------------------------------------------------------
+def f_full_graph(path): #hay que pasarle una direccion para un archivo y arma un grafo de ese xml con todas las voces
+
+    #Creo los grafos que van a tener todas las voces de un artista y todos sus temas
+    M=nx.DiGraph()
+    R=nx.Graph()
+    #H1=nx.DiGraph()
+    #H2=nx.DiGraph()
+
+    song = msc.converter.parse(path)
+    L=len(song.parts) #recorro todas las voces
+    for i in range(L):
+        #Uno los grafos en uno para cada voz para melodia
+        m=f_xml2graph(path, nombre_parte=i, modelo='melodia');
+        M=nx.compose(M,m)
+        #Uno los grafos en uno para cada voz para ritmo
+        r=f_xml2graph(path, nombre_parte=i, modelo='ritmo');
+        R=nx.compose(R,r)
+        #Para la armonia mediante f_xml2graph_armonia (cancion, index)
+        #h1=f_xml2graph_armonia(paths[j], i)
+        #H1=nx.compose(H1,h1)
+        #Para la armonia mediante f_armon (cancion, indexes)
+        #h1=f_xml2graph_armonia(paths[j], i)
+        #H1=nx.compose(H1,h1)
+        
+    return(M,R)
+
+#---------------------------------------------------------------------------
+def f_hierarchy(G): #grafica Ck vs K en log, y a partir de eso uno ve si es una red jerárquica
+    
+    H=G.copy()
+    #H = H.to_undirected()
+    nodos=H.nodes() 
+    grados=[]
+    Cs=[]
+    Cs_prom=[]
+    Cs_error=[]
+    cs_err=[]
+
+    
+    for i,nodo in enumerate(nodos):
+        grados.append(H.degree(nodo))
+        Cs.append(nx.clustering(H, nodo)) #sin pesos
+
+    #Busco los Cs que tengan el mismo grado y los promedio    
+    for i,k in enumerate(grados):
+        ls=[]
+        for j, c in enumerate(Cs):
+            if k == grados[j]:
+                ls.append(Cs[j])
+        Cs_prom.append(np.mean(ls))
+        Cs_error.append(np.std(ls))
+        
+        cs_err.append((1/np.log(10))*(1/Cs_prom[i])*Cs_error[i])
+    
+    
+    plt.figure(figsize=(9,9))
+    plt.plot(grados,Cs_prom,'bo')
+    plt.errorbar(grados, Cs_prom, xerr=None, yerr=cs_err, fmt=' ',ecolor='green',elinewidth=5,capsize=5,markersize=3)
+    plt.xscale('log')
+    plt.yscale('log')
+    
+    plt.xlabel('$k$')
+    plt.ylabel('$C(k)$')
+    plt.title('Bin lineal - Escala log')
+    plt.show()
