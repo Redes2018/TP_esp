@@ -1156,65 +1156,68 @@ def graficar_armonias_undirected(G, color_map='rainbow',layout='espiral'):
         M=G.ecount()
         N=G.vcount()
         nodos=list(G.vs)
-        nodos_name=[nodos[n]['name'] for n in range(0,len(nodos))]
-        edges=list(G.es)
-        freq_min=min(np.array(list(G.vs["freq"])))
+        if len(nodos)>0:
+                nodos_name=[nodos[n]['name'] for n in range(0,len(nodos))]
+                edges=list(G.es)
+                freq_min=min(np.array(list(G.vs["freq"])))
 
-        pos=dict()
-        posiciones=[]
+                pos=dict()
+                posiciones=[]
 
-        for n,nodo in enumerate(nodos):
-                f=nodos[n]['freq']
-                d=nodos[n]['duracion']
-                theta=2*np.pi*np.log2(f/freq_min)
-                if layout=='espiral':
-                        x = np.cos(theta)*f/freq_min*(1+d/4)
-                        y = np.sin(theta)*f/freq_min*(1+d/4)
-                        pos[n] = np.array([x,y])
-                        posiciones.append(np.array([x,y]))
-                elif layout=='circular':
-                        nro_oct = nodos[n]['octava']
-                        x = np.cos(theta)*nro_oct*(1+d/12)
-                        y = np.sin(theta)*nro_oct*(1+d/12)
-                        pos[n] = np.array([x,y])
-                        posiciones.append(np.array([x,y]))
+                for n,nodo in enumerate(nodos):
+                        f=nodos[n]['freq']
+                        d=nodos[n]['duracion']
+                        theta=2*np.pi*np.log2(f/freq_min)
+                        if layout=='espiral':
+                                x = np.cos(theta)*f/freq_min*(1+d/4)
+                                y = np.sin(theta)*f/freq_min*(1+d/4)
+                                pos[n] = np.array([x,y])
+                                posiciones.append(np.array([x,y]))
+                        elif layout=='circular':
+                                nro_oct = nodos[n]['octava']
+                                x = np.cos(theta)*nro_oct*(1+d/12)
+                                y = np.sin(theta)*nro_oct*(1+d/12)
+                                pos[n] = np.array([x,y])
+                                posiciones.append(np.array([x,y]))
 
-        #Colores nodos
-        octavas=np.array([nodos[n]['octava'] for n,nodo in enumerate(nodos)])
-        oct_min = min(octavas)
-        oct_max = max(octavas)
-        colores_oct_nro = (octavas - oct_min)/(oct_max - oct_min)
-        m = cm.ScalarMappable(norm=None, cmap=color_map)
-        colores_oct = m.to_rgba(colores_oct_nro)
-        color_nodos=[[colores_oct[i][0],colores_oct[i][1],colores_oct[i][2]] for i in range(0,len(colores_oct))]
+                #Colores nodos
+                octavas=np.array([nodos[n]['octava'] for n,nodo in enumerate(nodos)])
+                oct_min = min(octavas)
+                oct_max = max(octavas)
+                colores_oct_nro = (octavas - oct_min)/(oct_max - oct_min)
+                m = cm.ScalarMappable(norm=None, cmap=color_map)
+                colores_oct = m.to_rgba(colores_oct_nro)
+                color_nodos=[[colores_oct[i][0],colores_oct[i][1],colores_oct[i][2]] for i in range(0,len(colores_oct))]
 
-        #Tamano de nodos(pesados)
-        strength_nodos=G.strength()
-        tamano_labels=strength_nodos+10*np.ones(len(strength_nodos))
-        tamano_nodos=strength_nodos+50*np.ones(len(strength_nodos))
+                #Tamano de nodos(pesados)
+                strength_nodos=G.strength()
+                tamano_labels=strength_nodos+10*np.ones(len(strength_nodos))
+                tamano_nodos=strength_nodos+50*np.ones(len(strength_nodos))
         
-        #Enlaces
-        color_edges=[]
-        pesos_edges=[edges[e]['weigth'] for e in range(0,len(edges))]
-        color_edges=[edges[e]['color'] for e in range(0,len(edges))]
+                #Enlaces
+                color_edges=[]
+                pesos_edges=[edges[e]['weigth'] for e in range(0,len(edges))]
+                color_edges=[edges[e]['color'] for e in range(0,len(edges))]
         
-        #Grafico
-        layout = posiciones
-        visual_style = {}
-        visual_style["vertex_size"] = tamano_nodos #o 100
-        visual_style["vertex_label"] = nodos_name
-        visual_style["vertex_color"] = 'black'
-        visual_style["vertex_frame_color"] = color_nodos
-        visual_style["vertex_frame_width"] = 3
-        visual_style["vertex_label_color"] = color_nodos
-        visual_style["vertex_label_size"] = tamano_labels #o 50
-        visual_style["edge_width"] = pesos_edges
-        visual_style["edge_color"]= color_edges
-        visual_style["layout"] = layout
-        visual_style["bbox"] = (3000, 3000)
-        visual_style["margin"] = 300
-        ig.plot(G, **visual_style)
-        ig.plot(G, "armonias_undirected.png", **visual_style)
+                #Grafico
+                layout = posiciones
+                visual_style = {}
+                visual_style["vertex_size"] = tamano_nodos #o 100
+                visual_style["vertex_label"] = nodos_name
+                visual_style["vertex_color"] = 'black'
+                visual_style["vertex_frame_color"] = color_nodos
+                visual_style["vertex_frame_width"] = 3
+                visual_style["vertex_label_color"] = color_nodos
+                visual_style["vertex_label_size"] = tamano_labels #o 50
+                visual_style["edge_width"] = pesos_edges
+                visual_style["edge_color"]= color_edges
+                visual_style["layout"] = layout
+                visual_style["bbox"] = (3000, 3000)
+                visual_style["margin"] = 300
+                ig.plot(G, **visual_style)
+                ig.plot(G, "armonias_undirected.png", **visual_style)
+        else:
+                print('No se encontraron armonias del tamano buscado entre estas voces')
         
         return()
 ##---------------------------------------------------------------------------
@@ -1267,6 +1270,91 @@ def graficar_armonias_directed(Armonias):
                         ig.plot(J, "armonias_directed.png", **visual_style)
                 else:
                         print('No se encontraron armonias del tamano buscado entre estas voces')
+        return()
+#-----------------------------------------------------------------------------
+def f_nx2Igraph(G,directed=False,color_map='rainbow',layout='espiral'):
+        #Toma un grafo de nx y construye un grafo en igraph y lo grafica.
+
+        #Creamos el grafo.
+        if directed==False:
+                I=ig.Graph()
+        else:
+                I=ig.Graph(directed=True)
+                
+        #Nodos
+        nodos_name=list(G.nodes())
+        enlaces=list(G.edges())
+        for n,nodo in enumerate(nodos_name):
+                I.add_vertex(n)
+                I.vs[n]["name"]=nodo
+                I.vs[n]["freq"]= G.node[nodo]['freq']
+                I.vs[n]["octava"]= G.node[nodo]['octava']
+                I.vs[n]["duracion"]=G.node[nodo]['duracion']
+        nodos=list(I.vs)
+
+        #Posiciones
+        pos=dict()
+        posiciones=[]
+        freq_min=min(np.array(list(I.vs["freq"])))
+
+        for n,nodo in enumerate(nodos):
+                f=nodos[n]['freq']
+                d=nodos[n]['duracion']
+                theta=2*np.pi*np.log2(f/freq_min)
+                if layout=='espiral':
+                        x = np.cos(theta)*f/freq_min*(1+d/4)
+                        y = np.sin(theta)*f/freq_min*(1+d/4)
+                        pos[n] = np.array([x,y])
+                        posiciones.append(np.array([x,y]))
+                elif layout=='circular':
+                        nro_oct = nodos[n]['octava']
+                        x = np.cos(theta)*nro_oct*(1+d/12)
+                        y = np.sin(theta)*nro_oct*(1+d/12)
+                        pos[n] = np.array([x,y])
+                        posiciones.append(np.array([x,y]))
+
+        #Colores nodos
+        octavas=np.array([nodos[n]['octava'] for n,nodo in enumerate(nodos)])
+        oct_min = min(octavas)
+        oct_max = max(octavas)
+        colores_oct_nro = (octavas - oct_min)/(oct_max - oct_min)
+        m = cm.ScalarMappable(norm=None, cmap=color_map)
+        colores_oct = m.to_rgba(colores_oct_nro)
+        color_nodos=[[colores_oct[i][0],colores_oct[i][1],colores_oct[i][2]] for i in range(0,len(colores_oct))]
+
+        #Tamano de nodos(pesados)
+        strength_nodos=I.strength()
+        tamano_labels=strength_nodos+10*np.ones(len(strength_nodos))
+        tamano_nodos=strength_nodos+50*np.ones(len(strength_nodos))
+
+        #Enlaces
+        pesos_edges=[]
+        alphas=[]
+        for e,enlace in enumerate(enlaces):
+                I.add_edge(enlace[0],enlace[1])
+                I.es[e]['weigth']=G[enlace[0]][enlace[1]]['weight']
+                pesos_edges.append(G[enlace[0]][enlace[1]]['weight'])
+
+        pesos_max=np.max(np.array(pesos_edges))
+        alphas = [(pesos_edges[i]/pesos_max)**(1./2.) for i in range(0,len(pesos_edges))]
+        
+        #Propiedades
+        layout = posiciones
+        visual_style = {}
+        visual_style["vertex_size"] = 40
+        visual_style["vertex_label"] = nodos_name
+        visual_style["vertex_color"] = 'black'
+        visual_style["vertex_label_color"] = color_nodos
+        visual_style["vertex_frame_color"]= color_nodos
+        visual_style["vertex_label_size"] = 20
+        visual_style["edge_width"] = pesos_edges
+        visual_style["edge_opacity"] = alphas
+        visual_style["layout"] = layout
+        visual_style["bbox"] = (3000, 3000)
+        visual_style["margin"] = 300
+        ig.plot(I, **visual_style)
+        #ig.plot(I, "new_graph.png", **visual_style)
+
         return()
 #---------------------------------------------------------------------------
 
