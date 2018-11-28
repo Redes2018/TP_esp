@@ -15,7 +15,7 @@ import music21 as msc
 # f_motifs_rhytmic (cancion,length,nombre_parte=0)
 # f_motifs_tonal (cancion,length,nombre_parte=0)
 # f_grado_dist_M (G)
-# f_grado_dist_H (G)
+# f_grado_dist_R (G)
 # f_tabla (G,nombre)
 # f_xml2graph_armonia (cancion, index)
 # f_armon (cancion, indexes)
@@ -582,12 +582,12 @@ def f_grado_dist_M(G):
     plt.ylabel('$log (p_{k})$', fontsize=20)
     plt.title('Enlaces entrantes',fontsize=20)
 
-    plt.show()
+    #plt.show()
    
-    return(fig)
+    #return(fig)
 #-----------------------------------------------------------------------------------
 
-def f_grado_dist_H(G):
+def f_grado_dist_R(G):
     
     H=G.copy()
     nodos=H.nodes() 
@@ -624,9 +624,9 @@ def f_grado_dist_H(G):
     plt.ylabel('$log(p_{k})$',fontsize=20)
     plt.yscale('log')
     plt.title('Bin log - Escala log',fontsize=20)
-    plt.show()
+    #plt.show()
 
-    return(fig)
+    #return(fig)
 #-----------------------------------------------------------------------------------
 
 def f_tabla(G,nombre):
@@ -1564,7 +1564,7 @@ def f_hierarchy(G): #grafica Ck vs K en log, y a partir de eso uno ve si es una 
     
     plt.figure(figsize=(9,9))
     plt.plot(grados,Cs_prom,'bo')
-    plt.errorbar(grados, Cs_prom, xerr=None, yerr=cs_err, fmt=' ',ecolor='green',elinewidth=5,capsize=5,markersize=3)
+    #plt.errorbar(grados, Cs_prom, xerr=None, yerr=cs_err, fmt=' ',ecolor='green',elinewidth=5,capsize=5,markersize=3)
     plt.xscale('log')
     plt.yscale('log')
     
