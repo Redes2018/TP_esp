@@ -1,7 +1,6 @@
 # TP_esp
 Repositorio del trabajo final de Redes: Analisis de redes musicales
-
-QR
+<img src="/imagenes/frame.png" width="300" height="300">
 
 Libreria:
 Music21: http://web.mit.edu/music21/
