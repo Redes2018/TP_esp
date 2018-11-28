@@ -1640,3 +1640,225 @@ def transitivity_motifs(G):
         plt.show()
 
         return(cliques_k,estados_clique)
+#---------------------------------------------------------------
+def f_rewiring_directed(G):
+    #Funcion de grafo G que toma un grafo dirigido y realiza un recableado
+    #manteniendo el grado-in y el grado-out de cada nodo.
+    #Estrategia que vimos en clase de Cherno de redes random:
+    #1) Realizamos una copia del grafo G sin enlaces.
+    #2) Vamos tomando pares de nodos al azar y creamos enlaces manteniendo el grado-in y el grado-out de cada nodo hasta agotar el cupo.
+    #3) Buscamos los enlaces multiples que seran los problematicos(ej: que hayan dos enlaces del nodo A hacia el B) y recableamos hasta
+    #   que el numero de enlaces multiples sea 0.
+    #Devuelve grafo D del tipo MultiDiGraph pero que entre dos nodos solo pueden existir dos enlaces uno de A a B y otro de B hacia A, no
+    #pueden aparecer multienlaces.
+    
+    nodos=list(G.nodes)
+    enlaces=list(G.edges)
+    grados_dict = dict(G.degree(nbunch=nodos))
+    grados_in_dict=dict(G.in_degree(nbunch=nodos))
+    grados_out_dict=dict(G.out_degree(nbunch=nodos))
+    #k_nodo= list(grados_dict.values()) # lista de grados de cada nodo en nodos(ordenados)
+    k_nodo=[G.degree(nodo) for n,nodo in enumerate(nodos)]
+    #kin_nodo= list(grados_in_dict.values())
+    kin_nodo=[G.in_degree(nodo) for n,nodo in enumerate(nodos)]
+    #kout_nodo= list(grados_out_dict.values())
+    kout_nodo=[G.out_degree(nodo) for n,nodo in enumerate(nodos)]
+    
+    #print('grado original G')
+    k_nodo_antes=k_nodo
+    kin_nodo_antes=kin_nodo
+    kout_nodo_antes=kout_nodo
+    #print('k_nodo_antes')
+    #print(k_nodo_antes)
+    #print('kin_nodo_antes')
+    #print(kin_nodo_antes)
+    #print('kout_nodo_antes')
+    #print(kout_nodo_antes)
+    
+    #0)Cuento enlaces en el grafo original:
+    #Multiples y Simples:
+    enlaces_autoloops=[]
+    enlaces_multiples=[]
+    enlaces_simples=[]
+    
+    for i in range(0,len(nodos)):
+        for j in range(0,len(nodos)):
+                if(G.number_of_edges(nodos[i],nodos[j]))>1:
+                        for k in range(0,G.number_of_edges(nodos[i],nodos[j])-1):#en este for agregamos al vector enlaces_multiples tantos enlaces como multiplicidd tenga el mismo menos 1(porque si hay 3 enlaces entre dos nodos solo hay que sacar 2 de ellos )                    
+                                enlaces_multiples.append([nodos[i],nodos[j]]) #agrego multiplicidad -1 de enlaces muliples
+                        enlaces_simples.append([nodos[i],nodos[j]]) #agrego uno simple
+                elif (G.number_of_edges(nodos[i],nodos[j]))==1:
+                        if i!=j:
+                                enlaces_simples.append([nodos[i],nodos[j]])
+                        elif i==j:
+                                enlaces_autoloops.append([nodos[i],nodos[j]])
+                                
+    #print('enlaces totales antes: {}'.format(len(enlaces)))
+    #print('enlaces autoloops antes: {}'.format(len(enlaces_autoloops)))                                          
+    #print('enlaces multiples antes: {}'.format(len(enlaces_multiples)))
+    #print('enlaces simples antes: {}'.format(len(enlaces_simples)))
+    
+    #1) Creo un multigraph D que acepte multiedges
+    D = nx.MultiDiGraph()
+
+    #Agrego nodos:
+    D.add_nodes_from(nodos)
+    
+    #Inicializo kin_control, kout_control, nodosout_new y nodosin_new:
+    kin_control=np.array(kin_nodo_antes) #cuando creo un enlace entre nodoout_i y nodoin_j se le restara un 1 a los lugares i y j de kout_control y kin_control respectiv.
+    kout_control=np.array(kout_nodo_antes)
+    nodosout_new=nodos
+    nodosin_new=nodos
+
+    #2)Agregamos enlaces de forma aleatoria al grafo D, manteniendo controlado que el cupo de cada nodo no puede exceder su grado.
+    while(len(nodosin_new)>0 and len(nodosout_new)>0): #sigo mientras haya elementos en ambas listas.
+        #Elijo uno random de pairs
+        pair= (np.random.choice(nodosout_new),np.random.choice(nodosin_new)) #se pueden crear autoloops si salen dos mismos numeros.  
+        #Actualizamos variable de control: k_control
+        kout_control[nodos.index(pair[0])]=kout_control[nodos.index(pair[0])]-1 #actualizamos el kout
+        kin_control[nodos.index(pair[1])]=kin_control[nodos.index(pair[1])]-1   #actualizamos el kin
+        #creamos el enlace
+        D.add_edge(pair[0], pair[1])
+        #Actualizamos variable de control: nodos_new
+        if kout_control[nodos.index(pair[0])]==0: #solo actualizo kout_control cuando alguno de los valores llega a cero
+                index_nonzerok=[i for i in range(0,len(kout_control)) if kout_control[i]>0] #buscamos los lugares de k_control donde hayan elementos dinstintos a cero
+                index_equalzero=[i for i in range(0,len(kout_control)) if kout_control[i]==0]#buscamos los lugares de k_control donde hayan elementos igual a cero
+                nodosout_new=[nodos[index_nonzerok[i]] for i in range(0,len(index_nonzerok))] #actualizamos la lista de nodos asi no volvemos a tomar nodos que ya recableamos por completo o sea aquellos que alcanzaron k_control[i]=0   
+        if kin_control[nodos.index(pair[1])]==0:
+                index_nonzerok=[i for i in range(0,len(kin_control)) if kin_control[i]>0] #buscamos los lugares de k_control donde hayan elementos dinstintos a cero
+                index_equalzero=[i for i in range(0,len(kin_control)) if kin_control[i]==0]#buscamos los lugares de k_control donde hayan elementos igual a cero
+                nodosin_new=[nodos[index_nonzerok[i]] for i in range(0,len(index_nonzerok))]#actualizamos la lista de nodos asi no volvemos a tomar nodos que ya recableamos por completo o sea aquellos que alcanzaron k_control[i]=0
+    #print('grafico D')
+    enlaces=list(D.edges())
+    #Enlaces problemáticos:
+    #Selfloops:
+    #print('autoloops intermedio: {}'.format(len(list(D.selfloop_edges()))))
+    autoloops=list(D.selfloop_edges())
+    #print(autoloops)
+    
+    #Multiples y Simples:
+    enlaces_simples_autoloops=[]
+    enlaces_multiples=[]
+    enlaces_simples=[]
+    for i in range(0,len(nodos)):
+            for j in range(0,len(nodos)):
+                    if(D.number_of_edges(nodos[i],nodos[j]))>1:
+                            for k in range(0,D.number_of_edges(nodos[i],nodos[j])-1):#en este for agregamos al vector enlaces_multiples tantos enlaces como multiplicidd tenga el mismo menos 1(porque si hay 3 enlaces entre dos nodos solo hay que sacar 2 de ellos )
+                                    enlaces_multiples.append([nodos[i],nodos[j]])
+                            if i!=j:
+                                    enlaces_simples.append([nodos[i],nodos[j]])
+                            elif i==j:
+                                    enlaces_simples_autoloops.append([nodos[i],nodos[j]])
+                    elif (D.number_of_edges(nodos[i],nodos[j]))==1:
+                            if i!=j:
+                                    enlaces_simples.append([nodos[i],nodos[j]])
+                            elif i==j:
+                                    enlaces_simples_autoloops.append([nodos[i],nodos[j]])
+                                
+    #print('enlaces totales intermedio: {}'.format(len(enlaces)))
+    #print('enlaces autoloops intermedio: {}'.format(len(enlaces_simples_autoloops)))                                          
+    #print('enlaces multiples intermedio: {}'.format(len(enlaces_multiples)))
+    #print('enlaces simples intermedio: {}'.format(len(enlaces_simples)))
+    
+    
+    #Comparamos grados en esta etapa intermedia si queremos:
+    grados_dict = dict(D.degree(nbunch=nodos))
+    grados_in_dict=dict(D.in_degree(nbunch=nodos))
+    grados_out_dict=dict(D.out_degree(nbunch=nodos))
+    #k_nodo_despues= list(grados_dict.values())# lista de grados de cada nodo en nodos(ordenados)
+    k_nodo_intermedio=[D.degree(nodo) for n,nodo in enumerate(nodos)]
+    #kin_nodo_despues= list(grados_in_dict.values())
+    kin_nodo_intermedio=[D.in_degree(nodo) for n,nodo in enumerate(nodos)]
+    #kout_nodo_despues= list(grados_out_dict.values())
+    kout_nodo_intermedio=[D.out_degree(nodo) for n,nodo in enumerate(nodos)]
+    #print(k_nodo_intermedio)
+    #print(kin_nodo_intermedio)
+    #print(kout_nodo_intermedio)
+    
+    #Hasta acá el programa lo que hizo fue reconectar las puntas conservando el constraint de los grado de los nodos.
+    #El problema de esto es que aparecieron multienlaces entre nodos distintos o en el mismo nodo(o sea por ej dos enlaces (1-->2) o 2 enlaces(1-->1).
+    #Estos enlaces los vamos a llamar enlaces problemáticos.
+
+    #Por ultimo hay que eliminar estos enlaces que son problemáticos:
+    #numero_autoloops=len(autoloops)
+    numero_enlaces_multiples=len(enlaces_multiples)
+    
+    #4) Eliminamos los enlaces multiples:
+    numero_enlaces_multiples=len(enlaces_multiples)
+    #print('Recableando multiples...')
+    while(numero_enlaces_multiples >0):
+        for em in enlaces_multiples:
+            idx = np.random.choice(len(enlaces_simples),1)[0] #elijo un enlace dentro de los simples o sea no problematicos
+            enlace_elegido=enlaces_simples[idx]
+            loscuatronodos=[em[0],em[1],enlace_elegido[0],enlace_elegido[1]]
+            A = nx.to_pandas_adjacency(D)
+            a1=A[em[0]][enlace_elegido[0]]
+            a2=A[em[0]][enlace_elegido[1]]
+            a3=A[em[1]][enlace_elegido[0]]
+            a4=A[em[1]][enlace_elegido[1]]
+            adjacencynumber=a1+a2+a3+a4
+            #A continuación solo recableamos si los 4 nodos son distintos sino no, porque puedo vovler a crear un autoloop y  ademas...
+            #solo recableamos si son enlaces no adyacentes sino no, esto evita que se vuelvan a formar mutienlaces.
+            controlnumber=adjacencynumber + len(np.unique(loscuatronodos))
+            #tiene ya esos enlaces simples el grafo D?
+            yaestan=0
+            if D.has_edge(em[0],enlace_elegido[1]):
+                yaestan=yaestan+1
+            elif D.has_edge(enlace_elegido[0],em[1]):
+                yaestan=yaestan+1
+                                
+            if (controlnumber>=3 and yaestan==0):
+                #Hago el swap:
+                #Creo dos nuevos en el orden correcto un out lo tengo que conectar con un in 0:out 1:in
+                D.add_edge(em[0],enlace_elegido[1])
+                D.add_edge(enlace_elegido[0],em[1])
+                #Elimino dos
+                D.remove_edge(em[0],em[1])
+                D.remove_edge(enlace_elegido[0],enlace_elegido[1])
+                #Tengo que actualizar enlaces simples:
+                enlaces_simples.remove([enlace_elegido[0],enlace_elegido[1]])
+                enlaces_simples.append([em[0],enlace_elegido[1]])
+                enlaces_simples.append([enlace_elegido[0],em[1]])
+                #Tengo que actualizar enlaces_multiples
+                enlaces_multiples.remove([em[0],em[1]])
+                numero_enlaces_multiples=len(enlaces_multiples)
+
+    #5)Nos fijamos los autoloops:
+    autoloops=list(D.nodes_with_selfloops())
+    #print('autoloops final: {}'.format(len(list(D.nodes_with_selfloops()))))
+    
+    #Por ultimo me fijo los multiples al final:(deberia ser cero)
+    
+    enlaces_simples_autoloops=[]
+    enlaces_multiples=[]
+    enlaces_simples=[]
+    for i in range(0,len(nodos)):
+            for j in range(0,len(nodos)):
+                    if(D.number_of_edges(nodos[i],nodos[j]))>1:
+                            for k in range(0,D.number_of_edges(nodos[i],nodos[j])-1):#en este for agregamos al vector enlaces_multiples tantos enlaces como multiplicidd tenga el mismo menos 1(porque si hay 3 enlaces entre dos nodos solo hay que sacar 2 de ellos )
+                                    enlaces_multiples.append([nodos[i],nodos[j]])
+                            if i!=j:
+                                    enlaces_simples.append([nodos[i],nodos[j]])
+                            elif i==j:
+                                    enlaces_simples_autoloops.append([nodos[i],nodos[j]])
+                    elif (D.number_of_edges(nodos[i],nodos[j]))==1:
+                            if i!=j:
+                                    enlaces_simples.append([nodos[i],nodos[j]])
+                            elif i==j:
+                                    enlaces_simples_autoloops.append([nodos[i],nodos[j]])
+                                    
+    #print('enlaces totales final: {}'.format(len(enlaces)))
+    #print('enlaces autoloops final: {}'.format(len(enlaces_simples_autoloops)))                                          
+    #print('enlaces multiples final: {}'.format(len(enlaces_multiples)))
+    #print('enlaces simples final: {}'.format(len(enlaces_simples)))
+ 
+
+    #6) Chequeo final para ver que se mantuvo el grado k de los nodos:
+    grados_dict = dict(D.degree())
+    k_nodo_despues=[D.degree(nodo) for n,nodo in enumerate(nodos)]
+    #print(k_nodo_despues)
+    diferencia=np.array(k_nodo_despues)-np.array(k_nodo_antes)
+    if (len(np.where(diferencia!=0)[0])==0):
+        #print('Rewiring exitoso')
+    
+    return(D)
