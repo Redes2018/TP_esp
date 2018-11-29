@@ -932,7 +932,7 @@ def f_armon(cancion, indexes):
         
         #Instrumentos
         instrumentos=[song.parts[indexes[i]].partName for i in range(0,len(indexes))]
-        print('Instrumento Seleccionados:'+str(instrumentos))
+        #print('Instrumento Seleccionados:'+str(instrumentos))
         partituras=[song.parts[indexes[i]] for i in range(0,len(indexes))]
         compases=[partitura.getElementsByClass(msc.stream.Measure) for p,partitura in enumerate(partituras)]#todos los compases de las voces seleccionadas
         
@@ -1113,47 +1113,48 @@ def f_armon(cancion, indexes):
                                         colores_edges.append(color_dict[str(tamano_armonia)])
 
         #1)Grafico con Igraph (no dirigido):
-        f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral')
+        #f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral');
         #f_graficar_armonias_undirected_igraph(I, color_map='rainbow',layout='espiral')
 
         #2)Grafico con Igraph (dirigido):
-        f_graficar_armonias_directed(Armonias_song)
+        #f_graficar_armonias_directed(Armonias_song);
         #f_graficar_armonias_directed_igraph(Armonias_song)
 
         #3)Histograma de armonias:
-        plt.figure
-        yTick_position=[]
-        yTick_name=[]
-        contador=-1
-        contador_tick=-0.5
-        dtype = [('name', 'S28'), ('count', int)]
+        #plt.figure
+        #yTick_position=[]
+        #yTick_name=[]
+        #contador=-1
+        #contador_tick=-0.5
+        #dtype = [('name', 'S28'), ('count', int)]
    
-        for t,tamano in enumerate(np.arange(mayor_tamano_armonia,menor_tamano_armonia-1,-1)):
-                armonias_T=[] #lista con pares
-                for a, armonia in enumerate(Armonias_hist):
-                        if len(Armonias_hist[a][0])==tamano:
-                                armonias_T.append((str(Armonias_hist[a][0]),int(Armonias_hist[a][1])))        
-                armonias_T=np.array(armonias_T,dtype=dtype)
-                armonias_T=np.sort(armonias_T,order='count') #lo ordeno segun la propiedad count
-                armonias_T=list(armonias_T)
-                for j,d in enumerate(armonias_T):
-                        contador=contador+1
-                        contador_tick=contador_tick+1
-                        armonia=str(armonias_T[j][0],'utf-8')
-                        count_value=int(armonias_T[j][1])
-                        plt.barh(contador,count_value,color=color_dict[str(tamano)],edgecolor='black')
-                        yTick_position.append(contador_tick)
-                        yTick_name.append(armonias_T[j][0])
-        plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=8)
-        plt.title('2-3-4-5 Armonias',fontsize=20)
-        plt.show()
+        #for t,tamano in enumerate(np.arange(mayor_tamano_armonia,menor_tamano_armonia-1,-1)):
+        #        armonias_T=[] #lista con pares
+        #        for a, armonia in enumerate(Armonias_hist):
+        #                if len(Armonias_hist[a][0])==tamano:
+        #                        armonias_T.append((str(Armonias_hist[a][0]),int(Armonias_hist[a][1])))        
+        #        armonias_T=np.array(armonias_T,dtype=dtype)
+        #        armonias_T=np.sort(armonias_T,order='count') #lo ordeno segun la propiedad count
+        #        armonias_T=list(armonias_T)
+        #        for j,d in enumerate(armonias_T):
+        #                contador=contador+1
+        #                contador_tick=contador_tick+1
+        #                armonia=str(armonias_T[j][0],'utf-8')
+        #                count_value=int(armonias_T[j][1])
+        #                plt.barh(contador,count_value,color=color_dict[str(tamano)],edgecolor='black')
+        #                yTick_position.append(contador_tick)
+        #                yTick_name.append(armonias_T[j][0])
+        #plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=8)
+        #plt.title('2-3-4-5 Armonias',fontsize=20)
+        #plt.show()
 
         #print(Armonias_song,Tiempos_armonias_song)
         if G.number_of_nodes() !=0:
-                print('Armonias encontradas y su tiempo de aparicion')
+                #print('Armonias encontradas y su tiempo de aparicion')
                 return(Armonias_song,Tiempos_armonias_song,G)
         else:
-                return('No se encontraron armonias entre estas voces')
+                #print('No se encontraron armonias entre estas voces')
+                return(Armonias_song,Tiempos_armonias_song,G)
 ##---------------------------------------------------------------------------
 def f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral'):
         #Grafica el grafo no dirigido G. Graficamos en colores si son enlaces por armonias de 2-3-4-5 o mas notas.
@@ -1757,4 +1758,4 @@ def f_rewiring_directed(G):
     if (len(np.where(diferencia!=0)[0])==0):
         #print('Rewiring exitoso')
     
-    return(D)
+        return(D)
