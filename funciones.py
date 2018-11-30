@@ -1146,7 +1146,7 @@ def f_armon(cancion, indexes):
         #f_graficar_armonias_undirected_igraph(I, color_map='rainbow',layout='espiral')
 
         #2)Grafico con Igraph (dirigido):
-        #f_graficar_armonias_directed(Armonias_song);
+        D=f_graficar_armonias_directed(Armonias_song);
         #f_graficar_armonias_directed_igraph(Armonias_song)
 
         #3)Histograma de armonias:
@@ -1180,10 +1180,10 @@ def f_armon(cancion, indexes):
         #print(Armonias_song,Tiempos_armonias_song)
         if G.number_of_nodes() !=0:
                 #print('Armonias encontradas y su tiempo de aparicion')
-                return(Armonias_song,Tiempos_armonias_song,G)
+                return(Armonias_song,Tiempos_armonias_song,D,G)
         else:
                 #print('No se encontraron armonias entre estas voces')
-                return(Armonias_song,Tiempos_armonias_song,G)
+                return(Armonias_song,Tiempos_armonias_song,D,G)
 ##---------------------------------------------------------------------------
 def f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral'):
         #Grafica el grafo no dirigido G. Graficamos en colores si son enlaces por armonias de 2-3-4-5 o mas notas.
@@ -1273,18 +1273,18 @@ def f_graficar_armonias_directed(Armonias):
                         for a in range(1,len(Gnodos)-1):
                                 G.add_edge(str(Gnodos[a]),str(Gnodos[a+1]))
                         
-                        fig=plt.figure(figsize=(16,16))
-                        pos=nx.random_layout(G)
-                        nx.draw_networkx_nodes(G,pos,node_list=Gnodos,node_color=color_nodos,node_size=2000,alpha=1)
-                        nx.draw_networkx_labels(G,pos,font_size=5,font_color='k')
-                        edges=G.edges()
-                        nx.draw_networkx_edges(G,pos,edge_list=edges,edge_color='black',width=1,alpha=1,arrowsize=50)
-                        plt.axis('off')
-                        plt.show()
+                        #fig=plt.figure(figsize=(16,16))
+                        #pos=nx.random_layout(G)
+                        #nx.draw_networkx_nodes(G,pos,node_list=Gnodos,node_color=color_nodos,node_size=2000,alpha=1)
+                        #nx.draw_networkx_labels(G,pos,font_size=5,font_color='k')
+                        #edges=G.edges()
+                        #nx.draw_networkx_edges(G,pos,edge_list=edges,edge_color='black',width=1,alpha=1,arrowsize=50)
+                        #plt.axis('off')
+                        #plt.show()
                 
                 else:
                         print('No se encontraron armonias del tamano buscado entre estas voces')
-        return()
+        return(G)
 #-----------------------------------------------------------------------------
 def f_dist_escalas(cancion, nombre_parte=0):
     # Toma como input una canción y devuelve un grafo o una lista de grafos si se repite el nombre
@@ -1438,26 +1438,26 @@ def f_full_graph(path): #hay que pasarle una direccion para un archivo y arma un
     #Creo los grafos que van a tener todas las voces de un artista y todos sus temas
     M=nx.DiGraph()
     R=nx.Graph()
-    #H1=nx.DiGraph()
-    #H2=nx.DiGraph()
 
     song = msc.converter.parse(path)
     L=len(song.parts) #recorro todas las voces
+    voces=song.parts #quiero que grafique todas las voces
+    indexes=list(range(len(voces)))
+    #para las armonias si le paso la lista con todas las voces me devuelve ya todo combinado
+    armon,tiempos,D,U=f_armon (path, indexes); #analizamos las armonias
     for i in range(L):
         #Uno los grafos en uno para cada voz para melodia
         m=f_xml2graph(path, nombre_parte=i, modelo='melodia');
-        M=nx.compose(M,m)
         #Uno los grafos en uno para cada voz para ritmo
         r=f_xml2graph(path, nombre_parte=i, modelo='ritmo');
-        R=nx.compose(R,r)
-        #Para la armonia mediante f_xml2graph_armonia (cancion, index)
-        #h1=f_xml2graph_armonia(paths[j], i)
-        #H1=nx.compose(H1,h1)
-        #Para la armonia mediante f_armon (cancion, indexes)
-        #h1=f_xml2graph_armonia(paths[j], i)
-        #H1=nx.compose(H1,h1)
+        if type(r) or type(m) != 'NoneType':
+            M=nx.DiGraph()
+            R=nx.Graph()
+        else:    
+            M=nx.compose(M,m)
+            R=nx.compose(R,r)
         
-    return(M,R)
+    return(M,R,D,U)
 
 #---------------------------------------------------------------------------
 def f_hierarchy(G): #grafica Ck vs K en log, y a partir de eso uno ve si es una red jerárquica
@@ -1788,3 +1788,95 @@ def f_rewiring_directed(G):
         #print('Rewiring exitoso')
     
         return(D)
+#-------------------------------------------------------------------------
+#toma un xml y separa los grafos de cada voz, devuelve un dict con con cada grafo como .value y la voz como .key
+def f_voices(path, modelo='melodia'): #'melodia' 'ritmo' 'armoniaD' y 'armoniaU'
+    
+    #creo la lista de listas
+    g=dict()
+
+    if modelo == 'melodia':
+        song = msc.converter.parse(path)
+        for i,elem in enumerate(song.parts):#recorro todas las voces
+            m=f_xml2graph(path, nombre_parte=i, modelo=modelo); #obtengo el grafo
+            g.update({elem.partName:m})  
+
+        
+    if modelo == 'ritmo':
+        song = msc.converter.parse(path)
+        for i,elem in enumerate(song.parts):#recorro todas las voces
+            m=f_xml2graph(path, nombre_parte=i, modelo=modelo); #obtengo el grafo
+            g.update({elem.partName:m})  
+
+    if modelo == 'armoniaD':
+        song = msc.converter.parse(path)
+        for i,elem in enumerate(song.parts):#recorro todas las voces
+            D,tiempos,U=f_armon (path, voces) #obtengo el grafo
+            g.update({elem.partName:m})  
+
+    if modelo == 'armoniaU':
+        song = msc.converter.parse(path)
+        for i,elem in enumerate(song.parts):#recorro todas las voces
+            m=D,tiempos,U=f_armon (path, voces) #obtengo el grafo
+            g.update({elem.partName:m})  
+            
+    return(g)
+#-------------------------------------------------------------------------
+#Toma dos dict y las mergea cada voz por separado. Devuelve un dict de los grafos correspondientes 
+# con la etiqueta de la voz que pertenecian. 
+
+def f_merge(ls1,ls2,modelo='directed'): #puede ser directed o undirected
+
+    #creo la lista que va a contener los grafos mergeados
+    g=dict()
+    
+    #defino las longitudes
+    L1=len(ls1)
+    L2=len(ls2)
+    
+    #defino los instrumentos de las listas
+    inst1 = [key for key in ls1.keys()]
+    inst2 = [key for key in ls2.keys()]
+    dif1 = list(set(inst1)-set(inst2))
+    dif2 = list(set(inst2)-set(inst1))
+    dif=dif1+dif2
+    inter=list(set(inst1) & set(inst2))
+    
+    #me armo un dict con los grafos y voces que no van a aparecer
+    h=dict()
+    for i, inst in enumerate(dif):
+        if inst in inst1:
+            g= ls1['inst']
+        else:
+            g= ls2['inst']
+            
+        h.update({inst, g})
+
+    if modelo == 'directed': 
+        instrumentos=[]
+        for key1, value1 in ls1.iteritems():
+            for key2, value2 in ls2.iteritems():
+                #Creo los grafos que van a tener todas las canciones mergeadas pero en distintas voces
+                M=nx.DiGraph()
+                if key1 == key2:
+                    #Uno los grafos en uno para cada voz para melodia
+                    M=nx.compose(value1,value2)
+                    instrumentos.append(key2)
+                    g.update({key1:M})  
+                            
+        
+    if modelo == 'undirected': #el modelo me cambia en el tipo de grafo que me tengo que crear
+        instrumentos=[]
+        for key1, value1 in ls1.iteritems():
+            for key2, value2 in ls2.iteritems():
+                #aca es no directed
+                R=nx.Graph()
+                if key1 == key2:
+                    #Uno los grafos en uno para cada voz para melodia
+                    R=nx.compose(value1,value2)
+                    instrumentos.append(key2)
+                    g.update({key1:M})
+    g.update(h) #le agrego los que quedaron fuera
+
+        
+    return(g)
