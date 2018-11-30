@@ -1195,50 +1195,50 @@ def f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral'):
         freq_min = min(np.array(list(nx.get_node_attributes(G,'freq').values())))
         pos = dict()
 
+        if len(nodos)>0:
+            for nodo in nodos:
+                    f = G.node[nodo]['freq']
+                    d = G.node[nodo]['duracion']
+                    theta = 2*np.pi * np.log2(f/freq_min)
+                    if layout=='espiral':
+                            x = np.cos(theta)*f/freq_min*(1+d/4)
+                            y = np.sin(theta)*f/freq_min*(1+d/4)
+                            pos[nodo] = np.array([x,y])
+                    elif layout=='circular':
+                            nro_oct = G.node[nodo]['octava']
+                            x = np.cos(theta)*nro_oct*(1+d/12)
+                            y = np.sin(theta)*nro_oct*(1+d/12)
+                            pos[nodo] = np.array([x,y])
 
-        for nodo in nodos:
-                f = G.node[nodo]['freq']
-                d = G.node[nodo]['duracion']
-                theta = 2*np.pi * np.log2(f/freq_min)
-                if layout=='espiral':
-                        x = np.cos(theta)*f/freq_min*(1+d/4)
-                        y = np.sin(theta)*f/freq_min*(1+d/4)
-                        pos[nodo] = np.array([x,y])
-                elif layout=='circular':
-                        nro_oct = G.node[nodo]['octava']
-                        x = np.cos(theta)*nro_oct*(1+d/12)
-                        y = np.sin(theta)*nro_oct*(1+d/12)
-                        pos[nodo] = np.array([x,y])
+            octavas=np.array([G.node[nodo]['octava'] for i,nodo in enumerate(nodos)]) #agregue esta linea en reemplazo de la anterior.
+            oct_min = min(octavas)
+            oct_max = max(octavas)
+            colores_oct_nro = (octavas - oct_min)/(oct_max - oct_min)
+            m = cm.ScalarMappable(norm=None, cmap=color_map)
+            colores_oct = m.to_rgba(colores_oct_nro)
 
-        octavas=np.array([G.node[nodo]['octava'] for i,nodo in enumerate(nodos)]) #agregue esta linea en reemplazo de la anterior.
-        oct_min = min(octavas)
-        oct_max = max(octavas)
-        colores_oct_nro = (octavas - oct_min)/(oct_max - oct_min)
-        m = cm.ScalarMappable(norm=None, cmap=color_map)
-        colores_oct = m.to_rgba(colores_oct_nro)
-        
-        #Grafico
-        fig=plt.figure(figsize=(16,16))
-        nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=800,alpha=1)
-        nx.draw_networkx_labels(G,pos)
+            #Grafico
+            fig=plt.figure(figsize=(16,16))
+            nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=800,alpha=1)
+            nx.draw_networkx_labels(G,pos)
 
-        #Enlaces
-        #edges = nx.draw_networkx_edges(G,pos,width=3)
-        edges=G.edges()
-        weights = list(nx.get_edge_attributes(G,'weight').values())
-        weight_max = max(weights)
-        alphas = [(weights[i]/weight_max)**(1./2.) for i in range(0,M)]
-        color_edges=list(nx.get_edge_attributes(G,'color').values())
-        width_edges=list(nx.get_edge_attributes(G,'weight').values())
+            #Enlaces
+            #edges = nx.draw_networkx_edges(G,pos,width=3)
+            edges=G.edges()
+            weights = list(nx.get_edge_attributes(G,'weight').values())
+            weight_max = max(weights)
+            alphas = [(weights[i]/weight_max)**(1./2.) for i in range(0,M)]
+            color_edges=list(nx.get_edge_attributes(G,'color').values())
+            width_edges=list(nx.get_edge_attributes(G,'weight').values())
 
-        #for i in range(M): #comente esta porque no me funcaba el edges[i]
-                #edges[i].set_alpha((weights[i]/weight_max)**(1./2.)) # valores de alpha para cada enlace
+            #for i in range(M): #comente esta porque no me funcaba el edges[i]
+                    #edges[i].set_alpha((weights[i]/weight_max)**(1./2.)) # valores de alpha para cada enlace
 
-        for e,edge in enumerate(edges):#reemplace con esto que me parece que hace lo mismo
-                edges=nx.draw_networkx_edges(G, pos, edgelist=[edge], edge_color=color_edges[e],width=width_edges[e],alpha=alphas[e]) 
-        
-        plt.axis('off')
-        plt.show()
+            for e,edge in enumerate(edges):#reemplace con esto que me parece que hace lo mismo
+                    edges=nx.draw_networkx_edges(G, pos, edgelist=[edge], edge_color=color_edges[e],width=width_edges[e],alpha=alphas[e]) 
+
+            plt.axis('off')
+            #plt.show()
         
         return()
 ##---------------------------------------------------------------------------
