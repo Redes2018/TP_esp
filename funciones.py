@@ -1436,26 +1436,29 @@ def f_dist_escalas(cancion, nombre_parte=0):
 def f_full_graph(path): #hay que pasarle una direccion para un archivo y arma un grafo de ese xml con todas las voces
 
     #Creo los grafos que van a tener todas las voces de un artista y todos sus temas
-    M=nx.DiGraph()
-    R=nx.Graph()
-
+    ls_m=[]
+    ls_r=[]
+    
     song = msc.converter.parse(path)
     L=len(song.parts) #recorro todas las voces
     voces=song.parts #quiero que grafique todas las voces
     indexes=list(range(len(voces)))
     #para las armonias si le paso la lista con todas las voces me devuelve ya todo combinado
     armon,tiempos,D,U=f_armon (path, indexes); #analizamos las armonias
+    
     for i in range(L):
         #Uno los grafos en uno para cada voz para melodia
         m=f_xml2graph(path, nombre_parte=i, modelo='melodia');
         #Uno los grafos en uno para cada voz para ritmo
         r=f_xml2graph(path, nombre_parte=i, modelo='ritmo');
-        if type(r) or type(m) != 'NoneType':
-            M=nx.DiGraph()
-            R=nx.Graph()
-        else:    
-            M=nx.compose(M,m)
-            R=nx.compose(R,r)
+        if str(r.__class__) != "<class 'NoneType'>":
+            ls_r.append(r)
+        if str(m.__class__) != "<class 'NoneType'>": 
+            ls_m.append(m)    
+
+
+        M=nx.compose_all(ls_m)
+        R=nx.compose_all(ls_r)
         
     return(M,R,D,U)
 
@@ -1811,13 +1814,13 @@ def f_voices(path, modelo='melodia'): #'melodia' 'ritmo' 'armoniaD' y 'armoniaU'
     if modelo == 'armoniaD':
         song = msc.converter.parse(path)
         for i,elem in enumerate(song.parts):#recorro todas las voces
-            D,tiempos,U=f_armon (path, voces) #obtengo el grafo
+            chords,tiempos,D,U=f_armon (path, voces) #obtengo el grafo
             g.update({elem.partName:m})  
 
     if modelo == 'armoniaU':
         song = msc.converter.parse(path)
         for i,elem in enumerate(song.parts):#recorro todas las voces
-            m=D,tiempos,U=f_armon (path, voces) #obtengo el grafo
+            chords,tiempos,D,U=f_armon (path, voces) #obtengo el grafo
             g.update({elem.partName:m})  
             
     return(g)
