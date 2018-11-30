@@ -127,6 +127,8 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
     if type(part) == list:
         Gs = [] # Va a ser una lista de grafos, uno por cada voz analizada
         for notas in lista_notas:
+            if len(notas)==0:
+                continue
             G = nx.DiGraph()
 
             if modelo == 'melodia':
@@ -186,8 +188,22 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                     G[notas[i]][notas[i+1]]['weight']+=1 # si el enlace ya existe, se le agrega +1 al peso
                 else:
                     G.add_edge(notas[i],notas[i+1],weight=1) # si el enlace no existe, se crea con peso 1
+            # Finalmente, agrego atributo posicion (se debe hacer al final, porque necesita todos los nodos):
+            nodos = G.nodes()
+            freq_min = min(np.array(list(nx.get_node_attributes(G,'freq').values())))
+            for nodo in nodos:
+                f = G.node[nodo]['freq']
+                d = G.node[nodo]['duracion']
+                theta = 2*np.pi * np.log2(f/freq_min)
+                x = np.cos(theta)*f/freq_min*(1+d/4)
+                y = np.sin(theta)*f/freq_min*(1+d/4)
+                G.node[nodo]['x'] = x
+                G.node[nodo]['y'] = y
+
             Gs.append(G)
-    else:
+        if len(Gs)==1:
+            Gs = Gs[0]
+    elif len([x for x in notas if type(x)==msc.note.Note])>0:
         G = nx.DiGraph()
 
         if modelo == 'melodia':
@@ -247,7 +263,20 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                 G[notas[i]][notas[i+1]]['weight']+=1 # si el enlace ya existe, se le agrega +1 al peso
             else:
                 G.add_edge(notas[i],notas[i+1],weight=1) # si el enlace no existe, se crea con peso 1
+        # Finalmente, agrego atributo posicion (se debe hacer al final, porque necesita todos los nodos):
+        nodos = G.nodes()
+        freq_min = min(np.array(list(nx.get_node_attributes(G,'freq').values())))
+        for nodo in nodos:
+            f = G.node[nodo]['freq']
+            d = G.node[nodo]['duracion']
+            theta = 2*np.pi * np.log2(f/freq_min)
+            x = np.cos(theta)*f/freq_min*(1+d/4)
+            y = np.sin(theta)*f/freq_min*(1+d/4)
+            G.node[nodo]['x'] = x
+            G.node[nodo]['y'] = y
         Gs = G
+    else:
+        return None
     return(Gs)
 #-----------------------------------------------------------------------------------
 
@@ -932,7 +961,7 @@ def f_armon(cancion, indexes):
         
         #Instrumentos
         instrumentos=[song.parts[indexes[i]].partName for i in range(0,len(indexes))]
-        #print('Instrumento Seleccionados:'+str(instrumentos))
+        #print('Instrumentos Seleccionados:'+str(instrumentos))
         partituras=[song.parts[indexes[i]] for i in range(0,len(indexes))]
         compases=[partitura.getElementsByClass(msc.stream.Measure) for p,partitura in enumerate(partituras)]#todos los compases de las voces seleccionadas
         
