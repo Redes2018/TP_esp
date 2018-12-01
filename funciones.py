@@ -20,12 +20,15 @@ import music21 as msc
 # f_xml2graph_armonia (cancion, index)
 # f_armon (cancion, indexes)
 # f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral')
-# f_graficar_armonias_directed(Armonias)
+# f_grafo_armonias_directed(Armonias)
 # f_dist_escalas (cancion, nombre_parte=0)
 # f_full_graph(path)
 # f_hierarchy(G)
 # f_transitivity_motifs(G)
 # f_rewiring_directed(G)
+# f_voices(path, modelo='melodia')
+# f_merge(dict1,dict2,modelo='directed')
+# f_graficar_armonias_directed(G, layout='random',labels=False)
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -1146,7 +1149,7 @@ def f_armon(cancion, indexes):
         #f_graficar_armonias_undirected_igraph(I, color_map='rainbow',layout='espiral')
 
         #2)Grafico con Igraph (dirigido):
-        D=f_graficar_armonias_directed(Armonias_song);
+        D=f_grafo_armonias_directed(Armonias_song);
         #f_graficar_armonias_directed_igraph(Armonias_song)
 
         #3)Histograma de armonias:
@@ -1185,7 +1188,7 @@ def f_armon(cancion, indexes):
                 #print('No se encontraron armonias entre estas voces')
                 return(Armonias_song,Tiempos_armonias_song,D,G)
 ##---------------------------------------------------------------------------
-def f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral'):
+def f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral',labels='false'):
         #Grafica el grafo no dirigido G. Graficamos en colores si son enlaces por armonias de 2-3-4-5 o mas notas.
         #Los enlaces estan pesados por la aparicion de esa armonia.El grosor del enlace es por su peso.
         #El tamano de los nodos se calculo segun el strength (es un grado pesado por el peso de los enlaces)
@@ -1218,9 +1221,10 @@ def f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral'):
             colores_oct = m.to_rgba(colores_oct_nro)
 
             #Grafico
-            fig=plt.figure(figsize=(16,16))
+            #fig=plt.figure(figsize=(16,16))
             nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=800,alpha=1)
-            nx.draw_networkx_labels(G,pos)
+            if labels==True:
+                nx.draw_networkx_labels(G,pos)
 
             #Enlaces
             #edges = nx.draw_networkx_edges(G,pos,width=3)
@@ -1236,14 +1240,14 @@ def f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral'):
 
             for e,edge in enumerate(edges):#reemplace con esto que me parece que hace lo mismo
                     edges=nx.draw_networkx_edges(G, pos, edgelist=[edge], edge_color=color_edges[e],width=width_edges[e],alpha=alphas[e]) 
-
+                        
             plt.axis('off')
             #plt.show()
         
         return()
 ##---------------------------------------------------------------------------
-def f_graficar_armonias_directed(Armonias):
-        #Recibe un vector de Armonias y realiza un grafico dirigido donde
+def f_grafo_armonias_directed(Armonias):
+        #Recibe un vector de Armonias y realiza un grafo dirigido donde
         #Los nodos en vez de ser las notas son las armonias y se enlazan cuando ocurre una
         #despues de la otra.
 
@@ -1828,7 +1832,7 @@ def f_voices(path, modelo='melodia'): #'melodia' 'ritmo' 'armoniaD' y 'armoniaU'
 #Toma dos dict y las mergea cada voz por separado. Devuelve un dict de los grafos correspondientes 
 # con la etiqueta de la voz que pertenecian. 
 
-def f_merge(ls1,ls2,modelo='directed'): #puede ser directed o undirected
+def f_merge(dict1,dict2,modelo='directed'): #puede ser directed o undirected
 
     #creo la lista que va a contener los grafos mergeados
     g=dict()
@@ -1883,3 +1887,43 @@ def f_merge(ls1,ls2,modelo='directed'): #puede ser directed o undirected
 
         
     return(g)
+#-------------------------------------------------------------------------
+def f_graficar_armonias_directed(G, layout='random',labels=False): #puede ser 'circular' tambien, no se recomienda
+        #Recibe un vector de Armonias y realiza un grafico dirigido donde
+        #Los nodos en vez de ser las notas son las armonias y se enlazan cuando ocurre una
+        #despues de la otra.
+
+        menor_tamano_armonia=2
+        mayor_tamano_armonia=5
+        color_dict= {"2":"yellow","3": "orange", "4":"red","5":"purple"}
+
+        numero_nodo=-1
+        color_nodos=[]
+        
+        M = G.number_of_edges()
+        N = G.number_of_nodes()
+        nodos = G.nodes()
+        
+        
+        pos=eval('nx.'+layout+'_layout')(G)
+
+        if labels==True:
+            nx.draw_networkx_labels(G,pos,font_size=5,font_color='k')
+            
+        #asigno los colores a los nodos   
+        for i, nodo in enumerate(nodos):
+            nod=nodo.split(",")
+            tamano_armonia=len(nod)
+            if (tamano_armonia>menor_tamano_armonia-1 and tamano_armonia<mayor_tamano_armonia+1):
+                color_nodos.append(color_dict[str(tamano_armonia)])    
+            
+        #Creo enlaces si encontro armonias del tamano buscado
+        if len(nodos)>0:
+            #fig=plt.figure(figsize=(16,16))
+            nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=color_nodos,node_size=2000,alpha=1)
+            edges=G.edges()
+            nx.draw_networkx_edges(G,pos,edge_list=edges,edge_color='black',width=1,alpha=1,arrowsize=50)
+            plt.axis('off')
+            #plt.show()
+
+        return
