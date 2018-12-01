@@ -29,6 +29,7 @@ import music21 as msc
 # f_voices(path, modelo='melodia')
 # f_merge(dict1,dict2,modelo='directed')
 # f_graficar_armonias_directed(G, layout='random',labels=False)
+# f_simultaneidad(cancion, [indexi,indexj])
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -1927,3 +1928,75 @@ def f_graficar_armonias_directed(G, layout='random',labels=False): #puede ser 'c
             plt.axis('off')
 
         return
+#---------------------------------------------------------------------------
+def f_simultaneidad(cancion, indexes):
+        #Toma una cancion y una lista con dos indices [i,j,w] uno para cada voz.
+        #Devuelve una lista de enlaces entre notas cuando estas sonaron en simultaneo [(C4,G4),w,(C4,E3,w)...]
+        #La primer nota del enlace corresponde a la voz i y la segunda nota a la voz j. w es la frecuencia de aparicion del enlace.
+        #Nota: el enlace solo ocurre cuando la simultaneidad es entre notas de distintas voces.
+        #      Si un C4 y un G4 suenan en una misma voz y son simultaneas ese enlace no es creado. Deberia aprecer en el grafo de armonia.
+        #Cancion
+        song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
+        
+        #Instrumentos
+        instrumentos=[song.parts[indexes[i]].partName for i in range(0,len(indexes))]
+        print('Instrumento Seleccionados:'+str(instrumentos))
+        partituras=[song.parts[indexes[i]] for i in range(0,len(indexes))]
+        compases=[partitura.getElementsByClass(msc.stream.Measure) for p,partitura in enumerate(partituras)]#todos los compases de las voces seleccionadas
+        
+        #Enlaces
+        Enlaces=[]
+
+        #Recorro los compases y en cada compas extraigo las notas de las dos voces. Luego me fijo donde fueron simultaneas y creo los enlaces.
+        
+        for numero_compas in range(0,len(compases[0])):
+                Notas_compas=[]   #lista de listas de notas por cada voz. Cada lista contiene las notas que esa voz fue tocando en en el compas actual
+                Tiempos_compas=[] #lista de listas de tiempos por cada voz. Cada lista contiene los tiempos en que sonaron esas notas en el compas actual.
+  
+                for inst in range(0,len(instrumentos)):
+                        compas=compases[inst][numero_compas]
+                        notas=[]
+                        tiempos=[]
+                        frecuencias=[]
+                        octavas=[]
+                        for i,el in enumerate(compas.flat):
+                                isChord=str(type(el))=='<class \'music21.chord.Chord\'>' #me fijo si es un elemento del tipo acorde chord.Chord
+                                if isinstance(el,msc.note.Note):#si es una nota
+                                        nota_name=str(el.nameWithOctave)
+                                        notas.append(nota_name)
+                                        
+                                        tiempo_nota=float(compas.offset+el.offset)
+                                        tiempos.append(tiempo_nota)
+                                        
+                                        frecuencias.append(el.pitch.frequency)
+                                        
+                                        octavas.append(el.octave)
+                                        
+                                if isinstance(el,msc.chord.Chord) & isChord==True:#si es un acorde
+                                        for nc,noteChord in enumerate(el):
+                                                nota_name=str(noteChord.nameWithOctave)
+                                                notas.append(nota_name)
+                                                
+                                                tiempo_nota=float(compas.offset)+float(el.offset)
+                                                tiempos.append(tiempo_nota)
+                                                
+                                                frecuencias.append(noteChord.pitch.frequency)
+                                                
+                                                octavas.append(noteChord.octave)
+
+                        Notas_compas.append(notas)
+                        Tiempos_compas.append(tiempos)
+                #print('Notas: Instrumento1/Instrumento2')
+                #print(Notas_compas)
+                #print(Tiempos_compas)
+                #Ahora me fijo cuales notas son simultaneas y creo el enlace:
+                if (len(Tiempos_compas[0])>0 and len(Tiempos_compas[1])>0):
+                        for i,itiempos in enumerate(Tiempos_compas[0]):
+                                for j,jtiempos in enumerate(Tiempos_compas[1]):
+                                        if itiempos==jtiempos:
+                                                Enlaces.append([Notas_compas[0][i],Notas_compas[1][j]])
+        Enlaces_unicos=[list(i) for i in set(tuple(i) for i in Enlaces)]
+        Enlaces_hist = [(x, Enlaces.count(x)) for x in Enlaces_unicos]
+        Enlaces_simult=Enlaces_hist
+        return(Enlaces_simult)
+#---------------------------------------------------------------------------
