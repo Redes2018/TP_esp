@@ -1222,7 +1222,8 @@ def f_graficar_armonias_undirected(G, color_map='rainbow',layout='espiral',label
 
             #Grafico
             #fig=plt.figure(figsize=(16,16))
-            nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=800,alpha=1)
+            grados = dict(nx.degree(G))
+            nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=[50*v for v in grados.values()],alpha=1)
             if labels==True:
                 nx.draw_networkx_labels(G,pos)
 
@@ -1829,7 +1830,7 @@ def f_voices(path, modelo='melodia'): #'melodia' 'ritmo' 'armoniaD' y 'armoniaU'
             
     return(g)
 #-------------------------------------------------------------------------
-#Toma dos dict y las mergea cada voz por separado. Devuelve un dict de los grafos correspondientes 
+#Toma dos dict y mergea los dos grafos si ambas voces son iguales. Devuelve un dict de los grafos correspondientes 
 # con la etiqueta de la voz que pertenecian. 
 
 def f_merge(dict1,dict2,modelo='directed'): #puede ser directed o undirected
@@ -1919,11 +1920,10 @@ def f_graficar_armonias_directed(G, layout='random',labels=False): #puede ser 'c
             
         #Creo enlaces si encontro armonias del tamano buscado
         if len(nodos)>0:
-            #fig=plt.figure(figsize=(16,16))
-            nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=color_nodos,node_size=2000,alpha=1)
+            grados = dict(nx.degree(G))
+            nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=color_nodos,node_size=[50*v for v in grados.values()],alpha=1)
             edges=G.edges()
-            nx.draw_networkx_edges(G,pos,edge_list=edges,edge_color='black',width=1,alpha=1,arrowsize=50)
+            nx.draw_networkx_edges(G,pos,edge_list=edges,edge_color='black',width=3,alpha=0.6)
             plt.axis('off')
-            #plt.show()
 
         return
