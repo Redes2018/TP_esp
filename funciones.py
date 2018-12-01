@@ -30,6 +30,8 @@ import music21 as msc
 # f_merge(dict1,dict2,modelo='directed')
 # f_graficar_armonias_directed(G, layout='random',labels=False)
 # f_simultaneidad(cancion, [indexi,indexj])
+# f_voice2nameabrev(instrumento_name)
+# f_conect(G,H,cancion,indexes):
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -1930,7 +1932,7 @@ def f_graficar_armonias_directed(G, layout='random',labels=False): #puede ser 'c
         return
 #---------------------------------------------------------------------------
 def f_simultaneidad(cancion, indexes):
-        #Toma una cancion y una lista con dos indices [i,j,w] uno para cada voz.
+        #Toma una cancion y una lista con dos indices [i,j] uno para cada voz.
         #Devuelve una lista de enlaces entre notas cuando estas sonaron en simultaneo [(C4,G4),w,(C4,E3,w)...]
         #La primer nota del enlace corresponde a la voz i y la segunda nota a la voz j. w es la frecuencia de aparicion del enlace.
         #Nota: el enlace solo ocurre cuando la simultaneidad es entre notas de distintas voces.
@@ -1962,7 +1964,7 @@ def f_simultaneidad(cancion, indexes):
                         for i,el in enumerate(compas.flat):
                                 isChord=str(type(el))=='<class \'music21.chord.Chord\'>' #me fijo si es un elemento del tipo acorde chord.Chord
                                 if isinstance(el,msc.note.Note):#si es una nota
-                                        nota_name=str(el.nameWithOctave)
+                                        nota_name=str(el.nameWithOctave)+'/'+str(el.quarterLength)
                                         notas.append(nota_name)
                                         
                                         tiempo_nota=float(compas.offset+el.offset)
@@ -1974,7 +1976,7 @@ def f_simultaneidad(cancion, indexes):
                                         
                                 if isinstance(el,msc.chord.Chord) & isChord==True:#si es un acorde
                                         for nc,noteChord in enumerate(el):
-                                                nota_name=str(noteChord.nameWithOctave)
+                                                nota_name=str(noteChord.nameWithOctave)+'/'+str(noteChord.quarterLength)
                                                 notas.append(nota_name)
                                                 
                                                 tiempo_nota=float(compas.offset)+float(el.offset)
@@ -1999,4 +2001,55 @@ def f_simultaneidad(cancion, indexes):
         Enlaces_hist = [(x, Enlaces.count(x)) for x in Enlaces_unicos]
         Enlaces_simult=Enlaces_hist
         return(Enlaces_simult)
+#---------------------------------------------------------------------------
+def f_voicename2abrev(inst):
+        #diccionario de voces:
+        voice_2_abrev=dict()
+        #mantengamos actualizada la siguiente lista segun las canciones que vayamos usando asegurandonos que mapee bien todas las voces en su abreviatura.
+        voice_2_abrev={'Piano-piano':'Pi','Teclado-Keyboard':'Tcl','Guitar':'Gt','Bajo-Bass':'Bj','Contrabajo-Double Bass':'CBj','Violin':'Vl','Viola':'Vla','Cello-Chelo':'Vch','Flute-Flauta':'Fl','Trumpet-Trompeta':'Tp','Trombone':'Tb','Clarinet':'Cl','Fagot':'Fg'}
+        keys=list(voice_2_abrev)
+        abrev='empty'
+        for k in keys:
+                if inst in k:
+                        abrev=voice_2_abrev[k]
+        return(abrev)
+#---------------------------------------------------------------------------
+def f_conect(G,H,cancion,indexes):
+    #Cancion
+    song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
+    #Instrumentos
+    instrumentos=[song.parts[indexes[i]].partName for i in range(0,len(indexes))]
+    #Instrumentos que pueden haber mas de uno:
+    instrum_mult=['Pi']
+
+    #Grafos in
+    Grafos=[G,H]
+
+    #Grafo out
+    F=nx.DiGraph()
+
+    #Abrev
+    Abrev=[]
+    for g,grafo in enumerate(Grafos):
+            nodos=grafo.nodes()
+            mapping=dict()
+            abrev=f_voicename2abrev(instrumentos[g])
+            if abrev in instrum_mult: #si se trata de piano o algun otro instrumento que se nos ocurra que queramos mantener separados podemos decirle que etiquete con un numero ademas.
+                abrev=abrev+str(g)
+            Abrev.append(abrev)
+            #Ahora reetiqueamos los nodos
+            for n,nodo in enumerate(nodos):
+                    mapping[nodo]=nodo+'/'+abrev
+            Grafos[g]=nx.relabel_nodes(Grafos[g],mapping)#reetiueta los grafos de entrada
+            F.add_nodes_from(Grafos[g].nodes())#Agrego nodos
+            F.add_edges_from(Grafos[g].edges())#Agrego intraenlaces
+    
+    #Por ultimo llamamos a f_simultaneidad para que cree los interenlaces entre los grafos:
+    Enlaces=f_simultaneidad(cancion,indexes)
+    #Agregamos interenlaces los cuales son bidirigidos:
+    for e,enlace in enumerate(Enlaces):
+            F.add_edge(enlace[0][0]+'/'+Abrev[0],enlace[0][1]+'/'+Abrev[1],weight=enlace[1]/2)
+            F.add_edge(enlace[0][1]+'/'+Abrev[1],enlace[0][0]+'/'+Abrev[0],weight=enlace[1]/2)
+ 
+    return(F)
 #---------------------------------------------------------------------------
