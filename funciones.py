@@ -32,6 +32,8 @@ import music21 as msc
 # f_simultaneidad(cancion, [indexi,indexj])
 # f_voice2nameabrev(instrumento_name)
 # f_conect(G,H,cancion,indexes):
+# f_get_layers_position
+# f_graficar_2dy3d
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -2053,3 +2055,235 @@ def f_conect(G,H,cancion,indexes):
  
     return(F)
 #---------------------------------------------------------------------------
+def get_layers_position(G,base_pos,Nn,layer_vertical_shift=2,
+                 layer_horizontal_shift=0.0, proj_angle=45,number_of_layers=5):
+    """Return the position of the nodes in the layer i.
+    Parameters:
+    -----------
+    base_pos: position of base graph defualt value is None and thus function
+                creates a circular layout
+    layer_vertical_shift: vertical shift of the nodes coordinates compared
+                            to the nodes position of the base graph
+    layer_horizontal_shift: horizontal shift of the nodes coordinates
+                            compared to the nodes position of the base graph
+    proj_angle : angle of the tranfsormation
+    Return: a dictionary with the nodes id and their coordinates
+    Examples:
+    ---------
+    import multinetx as mx
+    N = 10
+    g1 = mx.erdos_renyi_graph(N,0.07,seed=218)
+    g2 = mx.erdos_renyi_graph(N,0.07,seed=211)
+    mg = mx.MultilayerGraph(list_of_layers=[g1,g2,g3])
+    pos = mx.get_position(mg,mx.random_layout(g1),
+                          layer_vertical_shift=0.2,
+                          layer_horizontal_shift=0.0,
+                          proj_angle=4)
+    """
+    pos = base_pos
+    Nold=0
+    for layer in range(0,number_of_layers):
+        N =  Nn[layer]
+        for j in range(N):
+            numero_nodo=(Nold+j)
+            pos[numero_nodo][0] *= math.cos(proj_angle)
+            pos[numero_nodo][1] *= math.sin(proj_angle)
+            if layer % 2 == 0:
+                ll = 1.0 * layer_horizontal_shift
+            else:
+                ll = -1.0 * layer_horizontal_shift
+            pos[numero_nodo] = np.array([pos[numero_nodo][0]+ll, pos[numero_nodo][1]+layer*layer_vertical_shift],dtype=np.float32)
+        Nold=Nold+N
+    return pos     
+#---------------------------------------------------------------------------
+def f_graficar_2dy3d(cancion,indexes):
+    
+    #Cancion
+    song_name=cancion
+    song=msc.converter.parse(song_name)
+        
+    #Instrumentos
+    instrumentos=[song.parts[indexes[i]].partName for i in range(0,len(indexes))]
+    print('Instrumento Seleccionados:'+str(instrumentos))
+    partituras=[song.parts[indexes[i]] for i in range(0,len(indexes))]
+
+    #Inicializamos variables
+    #Creamos el grafico 3D full:
+    FullGraph=nx.DiGraph()
+    Grafos=[]
+    Nodos=dict()
+    Numero_nodo=-1 #va a llevar la cuenta de nodos totales
+    Numero_enlace=-1 #va a llevar la cuenta de enlaces totales
+    Pos=[]           #lista con los vectores posicion de cada 
+    Enlaces=dict()
+    lista_enlaces=[]
+    pos_all=dict()
+
+    #Creamos los grafos que seran dirigido:
+
+
+    for inst in range(len(instrumentos)):
+        #Inicializamos el grafo:
+        G=nx.DiGraph()
+
+        #Numero de Instrumento:
+        voz=song.getElementsByClass(msc.stream.Part)[indexes[inst]].getElementsByClass(msc.stream.Measure) #todas los compases de la parte voz
+        notas=[] #todas las notas incluyendo silencios en la voz analizada
+        nodos=[] #solamente los nodos que van a figurar en la red (no tiene elementos repetidos)
+        numero_nodo=-1
+        pos=[]
+        Nold=len(Nodos)#el numero de nodos totales hasta la última que se analizó
+        #Nodos
+        for i,el in enumerate(voz.flat):
+            if isinstance(el,msc.note.Note):
+                nota_name=str(el.name)+str(el.octave)+'/'+str(el.quarterLength)
+                isornot=nota_name in nodos #chequeo si nota_name esta en nodos
+                notas.append(nota_name)
+                if isornot==False:
+                    nodos.append(nota_name)#si no lo estaba lo agregamos
+                    numero_nodo=numero_nodo+1
+                    Numero_nodo=Numero_nodo+1
+                    G.add_node(numero_nodo)
+                    FullGraph.add_node(Numero_nodo)
+                    G.node[numero_nodo]['name']=str(el.nameWithOctave)+'/'+str(el.quarterLength)
+                    FullGraph.node[Numero_nodo]['name']=str(el.nameWithOctave)+'/'+str(el.quarterLength)
+                    G.node[numero_nodo]['freq'] = el.pitch.frequency
+                    FullGraph.node[Numero_nodo]['freq']=el.pitch.frequency
+                    G.node[numero_nodo]['octava'] = el.octave
+                    FullGraph.node[Numero_nodo]['octava']=el.octave
+                    G.node[numero_nodo]['duracion'] = el.quarterLength
+                    FullGraph.node[Numero_nodo]['duracion']=el.quarterLength
+                    Nodos[Numero_nodo]={'id':Numero_nodo,'name':nota_name,'freq':el.pitch.frequency,'octava':el.octave,'duracion':el.quarterLength}
+            
+            elif isinstance(el,msc.note.Rest):
+                nota_name=str(el.name)+'/'+str(1)+'/'+str('inst:')+str(inst) #si es un silencio no vamos a diferenciar sus duraciones
+                isornot=nota_name in nodos
+                notas.append(nota_name)
+                if isornot==False:
+                    nodos.append(nota_name)
+                    numero_nodo=numero_nodo+1
+                    Numero_nodo=Numero_nodo+1
+                    G.add_node(numero_nodo)
+                    FullGraph.add_node(Numero_nodo)
+                    G.node[numero_nodo]['name']=str(el.name)
+                    FullGraph.node[Numero_nodo]['name']=str(el)+'/'+str(el.quarterLength)
+                    G.node[numero_nodo]['freq'] = 2**(1/(2*np.pi))*20
+                    FullGraph.node[Numero_nodo]['freq']=2**(1/(2*np.pi))*20
+                    G.node[numero_nodo]['octava'] = 0
+                    FullGraph.node[Numero_nodo]['octava']=0
+                    G.node[numero_nodo]['duracion'] = 1
+                    FullGraph.node[Numero_nodo]['duracion']=1
+                    Nodos[Numero_nodo]={'id':Numero_nodo,'name':nota_name,'freq':2**(1/(2*np.pi))*20,'octava':0,'duracion':1}#le asignamos octava 0 a todos los silencios
+                
+        #Posiciones de nodos:
+        pos=dict()
+        freq_min = min(np.array(list(nx.get_node_attributes(G,'freq').values())))
+        layout='espiral'
+        for n,nodo in enumerate(nodos):
+            f = G.node[n]['freq']
+            d = G.node[n]['duracion']
+            nro_oct = G.node[n]['octava']
+            theta = 2*np.pi * np.log2(f/freq_min)
+            if layout=='espiral':
+                x = np.cos(theta)*f/freq_min*(1+d/4)
+                y = np.sin(theta)*f/freq_min*(1+d/4)
+                pos[n]=np.array([x,y])
+                Nodos[Nold+n]['pos']=[x,y]
+                pos_all[Nold+n]=[x,y]
+            elif layout=='circular':
+                nro_oct = G.node[n]['octava']
+                x = np.cos(theta)*nro_oct*(1+d/12)
+                y = np.sin(theta)*nro_oct*(1+d/12)
+                pos[n]=np.array([x,y])
+                Nodos[Nold+n]['pos']=[x,y]
+                pos_all[Nold+n]=[x,y]
+            
+        #Intra-Enlaces(dentro de cada capa):
+        for i in range(0,len(notas)-1):
+            idx1=Nold+nodos.index(notas[i])
+            idx2=Nold+nodos.index(notas[i+1])
+            isornot=[idx1,idx2] in lista_enlaces
+            if isornot==False:
+                Numero_enlace=Numero_enlace+1
+                Enlaces[str([idx1,idx2])]={'name':[idx1,idx2],'weight':1}
+                lista_enlaces.append([idx1,idx2])
+            else:
+                Enlaces[str([idx1,idx2])]['weight']+=1
+            
+        #Terminamos agregando el grafo G y el vector posicion a las listas Grafos y Pos
+        Grafos.append(G)
+        Pos.append(pos)
+
+    #Colores nodos:
+    octavas = np.array([Nodos[n]['octava'] for n in range(0,len(Nodos))])
+    oct_min = min(octavas)
+    oct_max = max(octavas)
+    colores_oct_nro = (octavas - oct_min)/(oct_max - oct_min)
+    color_map='rainbow'
+    m = cm.ScalarMappable(norm=None, cmap=color_map)
+    colores_oct = m.to_rgba(colores_oct_nro) #colores por octava
+    for n in range(0,len(Nodos)):
+        Nodos[n]['color']=colores_oct[n]
+
+    #Numero de nodos:
+    Nodos_number=[]
+    Nodos_number_acum=[0]
+    suma=-1
+    for g,grafos in enumerate(Grafos):
+        suma=suma+Grafos[g].number_of_nodes()
+        Nodos_number.append(Grafos[g].number_of_nodes())
+        Nodos_number_acum.append(suma)
+
+    Enlaces_intra_idx=[]
+    #Inter-Enlaces (entre capas)
+    for ig in range(0,len(Grafos)-1): 
+        for jg in range(ig+1,len(Grafos)):
+            nodos_ig_dict=Grafos[ig].nodes('name')
+            nodos_jg_dict=Grafos[jg].nodes('name')
+            nodos_ig=[nodos_ig_dict[nodo] for n,nodo in enumerate(list(Grafos[ig].nodes()))]
+            nodos_jg=[nodos_jg_dict[nodo] for n,nodo in enumerate(list(Grafos[jg].nodes()))]
+            print('Creando inter-enlaces entre las voces:')
+            Enlaces_intra_names=f_simultaneidad(song_name,[indexes[ig],indexes[jg]])
+            #Nota:puede pasar que una nota que este en los enlaces no aparezca dentro de los nodos de melodia, porque melodia solo se quedo con la mas aguda...
+            for e,enlace_intra in enumerate(Enlaces_intra_names):
+                notaig=enlace_intra[0][0]
+                notajg=enlace_intra[0][1]
+                weight=enlace_intra[1]
+                #Ahora lo que hay que hacer es agarrar el nombre de las notas y mapearlas a la variable numero de nodo.
+                if (notaig in nodos_ig) and (notajg in nodos_jg): #nos fijamos si esta en la lista de nodos que melodia encontro
+                    Enlaces_intra_idx.append([Nodos_number_acum[ig]+nodos_ig.index(notaig),Nodos_number_acum[jg]+nodos_jg.index(notajg),weight/2])
+                    Enlaces_intra_idx.append([Nodos_number_acum[jg]+nodos_jg.index(notajg),Nodos_number_acum[ig]+nodos_ig.index(notaig),weight/2])
+                
+    #Agregamos los Inter-enlaces:
+    for e,enlace_intra in enumerate(Enlaces_intra_idx):
+        FullGraph.add_edge(enlace_intra[0],enlace_intra[1])
+        FullGraph[enlace_intra[0]][enlace_intra[1]]['weight']=enlace_intra[2]
+
+    #Agregamos los Intra-enlaces al grafo mg
+    #Intra-Enlaces (dentro de cada capa)
+    for e,enlace in enumerate(Enlaces):
+        FullGraph.add_edge(Enlaces[enlace]['name'][0],Enlaces[enlace]['name'][1])
+        FullGraph[Enlaces[enlace]['name'][0]][Enlaces[enlace]['name'][1]]['weight']=Enlaces[str([idx1,idx2])]['weight']
+    
+    ##Plot the adjacency matrix and the multiplex networks
+    fig=plt.figure(figsize=(20,5))
+    ax1 = fig.add_subplot(121)
+    ax1.set_title('2d network')
+    ax2 = fig.add_subplot(122)
+    ax2.axis('off')
+    ax2.set_title('3d network')
+    nl=len(indexes)#numero de layers
+    pos=f_get_layers_position(FullGraph,base_pos=pos_all,Nn=Nodos_number,layer_vertical_shift=50,layer_horizontal_shift=0.0,proj_angle=50,number_of_layers=nl)
+    weights = [FullGraph[u][v]['weight']/20 for u,v in FullGraph.edges()]
+    nx.draw(FullGraph,pos=pos,node_color=colores_oct,node_size=60,width=weights)
+    #Nombres de los instrumentos
+    text_yposition=0
+    font = FontProperties()
+    font.set_style('normal')
+    font.set_weight('bold')
+    for inst in instrumentos:
+        text_xposition=0.95
+        text_yposition=text_yposition+(1/float(len(instrumentos)+1))
+        plt.text(text_xposition,text_yposition,"{}".format(inst),fontproperties=font,transform=plt.gca().transAxes)
+    plt.show()
+#---------------------------------------------------------------------------------
