@@ -2006,7 +2006,7 @@ def f_voicename2abrev(inst):
         #diccionario de voces:
         voice_2_abrev=dict()
         #mantengamos actualizada la siguiente lista segun las canciones que vayamos usando asegurandonos que mapee bien todas las voces en su abreviatura.
-        voice_2_abrev={'Piano-piano':'Pi','Teclado-Keyboard':'Tcl','Guitar':'Gt','Bajo-Bass':'Bj','Contrabajo-Double Bass':'CBj','Violin':'Vl','Viola':'Vla','Cello-Chelo':'Vch','Flute-Flauta':'Fl','Trumpet-Trompeta':'Tp','Trombone':'Tb','Clarinet':'Cl','Fagot':'Fg'}
+        voice_2_abrev={'Voice-Voz-Synth. Voice':'Vz','Soprano':'SVz','Alto':'AVz','Tenor':'TVz','Piano-piano':'Pi','Teclado-Keyboard-Organ':'Tcl','Guitare classique-Guitarra Clasica-Classic Guitar':'clGt.','Guitar-Electric Guitar-Elektrische gitaar-Clean Guitar-Clean Guitar 1-Clean Guitar 2-Overdrive Guitar':'eGt','Bajo-Bass-Bass Guitar-Bass 1-Bass 2-Bass 3-Elektrische bas,bass':'Bj','Contrabajo-Double Bass':'CBj','Violin-Violino':'Vl','Viola':'Vla','Violoncello-Cello-Chelo':'Vch','Flute-Flauta-Flûte-Flet':'Fl','Trumpet-Trompeta-Trumpet in Bb':'Tp','Trombone-Bass Trombone':'Tb','Tuba-C Tuba':'Tba','Clarinet-B♭-Clarinet-Clarinet in Bb-Bass Clarinet':'Cl','Fagot-Bassoon':'Fg','Saxophone-Alto Saxophone-Tenor Saxophone-Baritone Saxophone-Baritone Sax':'Sx'}
         keys=list(voice_2_abrev)
         abrev='empty'
         for k in keys:
