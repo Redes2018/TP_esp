@@ -7,6 +7,8 @@ import music21 as msc
 import math
 import copy
 from matplotlib.font_manager import FontProperties
+import random
+
 #---------------------------------------------------------------------------------------------------------
 #            FUNCIONES PARA ANALISIS DE MUSICA:
 #---------------------------------------------------------------------------------------------------------
@@ -2312,7 +2314,6 @@ def f_graficar_2dy3d(cancion,indexes):
 #---------------------------------------------------------------------------------
 #toma un grafo y la cantidad de los nuevos nodos. Devuelve una lista random con las notas
 def random_walk_1_M(G,k):
-    #creo un dict que tiene la voz como .key y la lista de notas como .value
     ls = []
     nodos=list(G.nodes())
     #Me armo un dict, con el key del nombre del nodo y una lista
@@ -2337,7 +2338,7 @@ def random_walk_1_M(G,k):
             #Para ese nodo inicial veo que elementro de matriz le corresponde
             #se podria hacer dos random walks, una con los pesos acumulados (cum_weights) y otras sin.
             #la lista tiene que ser los nodos 
-            nodo_ran=random.choices(nodos, weights[nodo_i],k=1)#estoy teniendo problemas con este m
+            nodo_ran=random.choices(nodos, weights[nodo_i],k=1)
             #weights[str(nodo_i)] me da lista de primeros vecinos
             ls.append(nodo_ran[0]) #agrego el que haya salido. Le pongo [0] xq random.choices me devuelve una lista
         else:
@@ -2346,3 +2347,20 @@ def random_walk_1_M(G,k):
             ls.append(nodo_ran[0]) #agrego el que haya salido
         
     return(ls)
+#---------------------------------------------------------------------------------
+def f_list2seq(lista,nombre):
+    # Toma una lista de notas (generadas por la caminata al azar) y genera un stream
+    # Guarda la partitura xml y el audio midi con el nombre asignado
+    lista = [x.split("/") for x in lista]
+    notas = lista.copy()
+    L = len(notas)
+    for i in range(L):
+        if len(lista[i])==2:
+            notas[i] = msc.note.Note(lista[i][0],quarterLength=float(lista[i][1]))
+        elif len(lista[i])==1:
+            notas[i] = msc.note.Rest(quarterLength=1.0)
+    cancion = msc.stream.Stream()
+    for i in range(L):
+        cancion.append(notas[i])
+    cancion.write("MusicXML", nombre+".xml")
+    cancion.write("Midi", nombre+".mid")
