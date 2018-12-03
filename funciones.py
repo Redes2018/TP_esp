@@ -34,6 +34,7 @@ import music21 as msc
 # f_conect(G,H,cancion,indexes):
 # f_get_layers_position
 # f_graficar_2dy3d
+# random_walk_1_M(G,k)
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -2287,3 +2288,39 @@ def f_graficar_2dy3d(cancion,indexes):
         plt.text(text_xposition,text_yposition,"{}".format(inst),fontproperties=font,transform=plt.gca().transAxes)
     plt.show()
 #---------------------------------------------------------------------------------
+#toma un grafo y la cantidad de los nuevos nodos. Devuelve una lista random con las notas
+def random_walk_1_M(G,k):
+    #creo un dict que tiene la voz como .key y la lista de notas como .value
+    ls = []
+    nodos=list(G.nodes())
+    #Me armo un dict, con el key del nombre del nodo y una lista
+    weights={} 
+    
+    M=nx.to_numpy_matrix(G) #obtenemos la matriz de adyacencia no esparsa
+    L=M.shape[1]
+    #normalizamos
+    for i, nodo in enumerate(nodos):
+        if (np.sum(M[i]) > 0):
+            M[i] = M[i]/np.sum(M[i])
+        #los pesos de salto son los valores de las filas normalizadas.
+        #paso M[i] a una lista, le hago .tolist()[0] asi no me grafica extra corchetes
+        weights.update({str(nodo): M[i].tolist()[0]})  
+
+    #Hago la caminata
+    #Me paro en algun nodo inicial random
+    nodo_i=random.choice(nodos)
+    for i in range(k):
+        if i == 0: #para el primer paso
+            ls.append(nodo_i)
+            #Para ese nodo inicial veo que elementro de matriz le corresponde
+            #se podria hacer dos random walks, una con los pesos acumulados (cum_weights) y otras sin.
+            #la lista tiene que ser los nodos 
+            nodo_ran=random.choices(nodos, weights[nodo_i],k=1)#estoy teniendo problemas con este m
+            #weights[str(nodo_i)] me da lista de primeros vecinos
+            ls.append(nodo_ran[0]) #agrego el que haya salido. Le pongo [0] xq random.choices me devuelve una lista
+        else:
+            #veo los vecinos del nuevo nodo
+            nodo_ran=random.choices(nodos, weights[nodo_ran[0]],k=1)
+            ls.append(nodo_ran[0]) #agrego el que haya salido
+        
+    return(ls)
