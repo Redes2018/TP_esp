@@ -4,7 +4,9 @@ from matplotlib import cm
 import pandas as pd
 import networkx as nx
 import music21 as msc
-
+import math
+import copy
+from matplotlib.font_manager import FontProperties
 #---------------------------------------------------------------------------------------------------------
 #            FUNCIONES PARA ANALISIS DE MUSICA:
 #---------------------------------------------------------------------------------------------------------
@@ -2055,31 +2057,30 @@ def f_conect(G,H,cancion,indexes):
  
     return(F)
 #---------------------------------------------------------------------------
-def get_layers_position(G,base_pos,Nn,layer_vertical_shift=2,
+def get_layers_2d_position(G,base_pos,Nn,radio=50, proj_angle=45,number_of_layers=5):
+    pos = base_pos
+    Nold=0
+    centro_espiral=np.array([-radio*(math.cos(60*np.pi/180)),radio*(math.sin(60*np.pi/180))])
+    for layer in range(0,number_of_layers):
+        N =  Nn[layer]
+        #calculo un nuevo centro:
+        xcentro=radio*(math.cos(60*np.pi/180))
+        if layer%2==0:
+            signo=-1
+        else:
+            signo=1
+        ycentro=radio*(math.sin(60*np.pi/180))*signo
+        centro_espiral=centro_espiral+np.array([xcentro,ycentro])
+        for j in range(N):
+            numero_nodo=(Nold+j)
+            pos[numero_nodo][0] *= math.cos(proj_angle)
+            pos[numero_nodo][1] *= math.sin(proj_angle)
+            pos[numero_nodo] = np.array([pos[numero_nodo][0]+centro_espiral[0], pos[numero_nodo][1]+centro_espiral[1]],dtype=np.float32)
+        Nold=Nold+N
+    return pos
+#---------------------------------------------------------------------------
+def get_layers_3d_position(G,base_pos,Nn,layer_vertical_shift=2,
                  layer_horizontal_shift=0.0, proj_angle=45,number_of_layers=5):
-    """Return the position of the nodes in the layer i.
-    Parameters:
-    -----------
-    base_pos: position of base graph defualt value is None and thus function
-                creates a circular layout
-    layer_vertical_shift: vertical shift of the nodes coordinates compared
-                            to the nodes position of the base graph
-    layer_horizontal_shift: horizontal shift of the nodes coordinates
-                            compared to the nodes position of the base graph
-    proj_angle : angle of the tranfsormation
-    Return: a dictionary with the nodes id and their coordinates
-    Examples:
-    ---------
-    import multinetx as mx
-    N = 10
-    g1 = mx.erdos_renyi_graph(N,0.07,seed=218)
-    g2 = mx.erdos_renyi_graph(N,0.07,seed=211)
-    mg = mx.MultilayerGraph(list_of_layers=[g1,g2,g3])
-    pos = mx.get_position(mg,mx.random_layout(g1),
-                          layer_vertical_shift=0.2,
-                          layer_horizontal_shift=0.0,
-                          proj_angle=4)
-    """
     pos = base_pos
     Nold=0
     for layer in range(0,number_of_layers):
@@ -2088,11 +2089,7 @@ def get_layers_position(G,base_pos,Nn,layer_vertical_shift=2,
             numero_nodo=(Nold+j)
             pos[numero_nodo][0] *= math.cos(proj_angle)
             pos[numero_nodo][1] *= math.sin(proj_angle)
-            if layer % 2 == 0:
-                ll = 1.0 * layer_horizontal_shift
-            else:
-                ll = -1.0 * layer_horizontal_shift
-            pos[numero_nodo] = np.array([pos[numero_nodo][0]+ll, pos[numero_nodo][1]+layer*layer_vertical_shift],dtype=np.float32)
+            pos[numero_nodo] = np.array([pos[numero_nodo][0]+layer*layer_horizontal_shift, pos[numero_nodo][1]+layer*layer_vertical_shift],dtype=np.float32)
         Nold=Nold+N
     return pos     
 #---------------------------------------------------------------------------
@@ -2264,25 +2261,50 @@ def f_graficar_2dy3d(cancion,indexes):
     for e,enlace in enumerate(Enlaces):
         FullGraph.add_edge(Enlaces[enlace]['name'][0],Enlaces[enlace]['name'][1])
         FullGraph[Enlaces[enlace]['name'][0]][Enlaces[enlace]['name'][1]]['weight']=Enlaces[str([idx1,idx2])]['weight']
-    
-    ##Plot the adjacency matrix and the multiplex networks
-    fig=plt.figure(figsize=(20,5))
-    ax1 = fig.add_subplot(121)
-    ax1.set_title('2d network')
-    ax2 = fig.add_subplot(122)
-    ax2.axis('off')
-    ax2.set_title('3d network')
-    nl=len(indexes)#numero de layers
-    pos=f_get_layers_position(FullGraph,base_pos=pos_all,Nn=Nodos_number,layer_vertical_shift=50,layer_horizontal_shift=0.0,proj_angle=50,number_of_layers=nl)
+
+    #Pesos de los enlaces:
     weights = [FullGraph[u][v]['weight']/20 for u,v in FullGraph.edges()]
-    nx.draw(FullGraph,pos=pos,node_color=colores_oct,node_size=60,width=weights)
+
+    ##Grafico 2-d
+    R=100 #radio entorno de las layers
+    Delta=25
+    nl=len(indexes)#numero de layers
+    plt.figure(figsize=(15,15))
+    plt.title('2d Layout')
+    base_pos2d=copy.deepcopy(pos_all)
+    pos2d=get_layers_2d_position(FullGraph,base_pos=base_pos2d,Nn=Nodos_number,radio=R,number_of_layers=nl)
+    nx.draw(FullGraph,pos=pos2d,node_color=colores_oct,node_size=60,width=weights)
+    #Nombres de los instrumentos
+    text_yposition=0
+    font = FontProperties()
+    font.set_style('normal')
+    font.set_weight('bold')
+    centro_espiral=np.array([-R*(math.cos(60*np.pi/180)),R*(math.sin(60*np.pi/180))])
+    for i,inst in enumerate(instrumentos):
+        xcentro=R*(math.cos(60*np.pi/180))
+        if i%2==0:
+            signo=-1
+        else:
+            signo=1
+        ycentro=R*(math.sin(60*np.pi/180))*signo
+        centro_espiral=centro_espiral+np.array([xcentro,ycentro])
+        centro_texto=[centro_espiral[0],-R/2-Delta]
+        plt.text(centro_texto[0],centro_texto[1],"{}".format(inst),fontproperties=font)
+
+
+    ##Grafico 3-d
+    fig2=plt.figure(figsize=(15,15))
+    plt.title('3d Layout')
+    base_pos3d=copy.deepcopy(pos_all)
+    pos3d=get_layers_3d_position(FullGraph,base_pos=base_pos3d,Nn=Nodos_number,layer_vertical_shift=50,layer_horizontal_shift=0.0,proj_angle=50,number_of_layers=nl)
+    nx.draw(FullGraph,pos=pos3d,node_color=colores_oct,node_size=60,width=weights)
     #Nombres de los instrumentos
     text_yposition=0
     font = FontProperties()
     font.set_style('normal')
     font.set_weight('bold')
     for inst in instrumentos:
-        text_xposition=0.95
+        text_xposition=0.85
         text_yposition=text_yposition+(1/float(len(instrumentos)+1))
         plt.text(text_xposition,text_yposition,"{}".format(inst),fontproperties=font,transform=plt.gca().transAxes)
     plt.show()
