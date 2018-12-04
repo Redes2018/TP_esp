@@ -326,8 +326,10 @@ def graficar(G, color_map='rainbow',layout='espiral', labels=False):
 	colores_oct = m.to_rgba(colores_oct_nro)
 	
 	#Grafico
-	grados = dict(nx.degree(G))
-	nx.draw_networkx_nodes(G,pos,node_list=grados.keys(),node_color=colores_oct,node_size=[50*v for v in grados.values()])
+	grados = np.array([d for d in dict(nx.degree(G)).values()])
+	deg_max = max(grados)
+	n_size = (grados/deg_max)
+	nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=500*n_size)
 	
 	if labels==True:
 		nx.draw_networkx_labels(G,pos)
@@ -1448,11 +1450,12 @@ def f_dist_escalas(cancion, nombre_parte=0):
     return(Gs)
 
 #---------------------------------------------------------------------------
-def f_full_graph(path): #hay que pasarle una direccion para un archivo y arma un grafo de ese xml con todas las voces
+def f_full_graph(path,voz_principal=False): #hay que pasarle una direccion para un archivo y arma un grafo de ese xml con todas las voces
 
     #Creo los grafos que van a tener todas las voces de un artista y todos sus temas
     ls_m=[]
     ls_r=[]
+    ls_d=[]
     
     song = msc.converter.parse(path)
     L=len(song.parts) #recorro todas las voces
@@ -1461,21 +1464,32 @@ def f_full_graph(path): #hay que pasarle una direccion para un archivo y arma un
     #para las armonias si le paso la lista con todas las voces me devuelve ya todo combinado
     armon,tiempos,D,U=f_armon (path, indexes); #analizamos las armonias
     
-    for i in range(L):
-        #Uno los grafos en uno para cada voz para melodia
-        m=f_xml2graph(path, nombre_parte=i, modelo='melodia');
-        #Uno los grafos en uno para cada voz para ritmo
-        r=f_xml2graph(path, nombre_parte=i, modelo='ritmo');
-        if str(r.__class__) != "<class 'NoneType'>":
-            ls_r.append(r)
-        if str(m.__class__) != "<class 'NoneType'>": 
-            ls_m.append(m)    
-
-
+    if voz_principal==False:
+        for i in range(L):
+            #Uno los grafos en uno para cada voz para melodia
+            m=f_xml2graph(path, nombre_parte=i, modelo='melodia');
+            dist = f_dist_escalas(path, nombre_parte=i) 
+            #Uno los grafos en uno para cada voz para ritmo
+            r=f_xml2graph(path, nombre_parte=i, modelo='ritmo');
+            if str(r.__class__) != "<class 'NoneType'>":
+                ls_r.append(r)
+            if str(dist.__class__) != "<class 'NoneType'>":
+                ls_d.append(dist)
+            if str(m.__class__) != "<class 'NoneType'>": 
+                ls_m.append(m)
         M=nx.compose_all(ls_m)
+        A=nx.compose_all(ls_d) # A de Absoluto, porque es el de las distancias a la tonica
         R=nx.compose_all(ls_r)
+    elif voz_principal==True:
+        M = f_xml2graph(path)
+        A = f_dist_escalas(path) 
+        R = f_xml2graph(path, modelo='ritmo')
+    else:
+        M = f_xml2graph(path,nombre_parte=voz_principal)
+        A = f_dist_escalas(path,nombre_parte=voz_principal) 
+        R = f_xml2graph(path,nombre_parte=voz_principal, modelo='ritmo')
         
-    return(M,R,D,U)
+    return(M,A,R,D,U)
 
 #---------------------------------------------------------------------------
 def f_hierarchy(G): #grafica Ck vs K en log, y a partir de eso uno ve si es una red jerárquica
