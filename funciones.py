@@ -561,117 +561,104 @@ def f_motifs_tonal(cancion,length,nombre_parte=0):
 	return (motifs_tonal,frecuencias)
 #-----------------------------------------------------------------------------------
 
-def f_grado_dist_M(G):
+def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
     
     H=G.copy()
     nodos=H.nodes() 
     N=len(nodos)
-    #calculo los grados que salen y entran de cada nodo
-    kgrados_out = [H.out_degree(nodo) for nodo in nodos]
-    kgrados_in = [H.in_degree(nodo) for nodo in nodos]
+    if modelo == 'undirected':
+        
+        #calculo los grados que salen y entran de cada nodo
+        kgrados = [H.degree(nodo) for nodo in nodos]
     
-    
-    # Contamos la cantidad de nodos que tienen un cierto k_grado, usando la funcion np.unique()
-    # Guardamos el resultado en la variable histograma
-    histograma_out = np.unique(kgrados_out,return_counts=True)
-    k_out = histograma_out[0] # grados
-    pk_out = histograma_out[1]/float(N) # pk = Nk/N, donde N es el numero total de nodos (cuentas normalizadas)
-    maxgrado_out = max(k_out) #maximo grado
-    
-    logbin_out = np.logspace(0,np.log10(maxgrado_out),num=20,endpoint=True,base=10) # bineado en base 10
-    histograma_logbin_out = np.histogram(kgrados_out,bins=logbin_out,density=False)
-    
-    # Normalizamos por el ancho de los bines y creamos el vector bin_centros
-    bin_centros_out = []
-    pk_logbin_out = []
-    for i in range(len(logbin_out)-1):
-        bin_centros_out.append((logbin_out[i+1]+logbin_out[i])/2)
-        bin_ancho = logbin_out[i+1]-logbin_out[i]
-        pk_logbin_out.append(histograma_logbin_out[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
-    
+        # Contamos la cantidad de nodos que tienen un cierto k_grado, usando la funcion np.unique()
+        # Guardamos el resultado en la variable histograma
+        histograma = np.unique(kgrados,return_counts=True)
+        k = histograma[0] # grados
+        pk = histograma[1]/float(N) # pk = Nk/N, donde N es el numero total de nodos (cuentas normalizadas)
+        maxgrado = max(k) #maximo grado
 
-    #idem in
-    histograma_in = np.unique(kgrados_in,return_counts=True)
-    k_in = histograma_in[0] # grados
-    pk_in = histograma_in[1]/float(N) # pk = Nk/N, donde N es el numero total de nodos (cuentas normalizadas)
-    maxgrado_in = max(k_in) #maximo grado
-    
-    logbin_in = np.logspace(0,np.log10(maxgrado_in),num=20,endpoint=True,base=10) # bineado en base 10
-    histograma_logbin_in = np.histogram(kgrados_in,bins=logbin_in,density=False)
-    
-    # Normalizamos por el ancho de los bines y creamos el vector bin_centros
-    bin_centros_in = []
-    pk_logbin_in = []
-    for i in range(len(logbin_in)-1):
-        bin_centros_in.append((logbin_in[i+1]+logbin_in[i])/2)
-        bin_ancho = logbin_in[i+1]-logbin_in[i]
-        pk_logbin_in.append(histograma_logbin_in[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
+        logbin = np.logspace(0,np.log10(maxgrado),num=20,endpoint=True,base=10) # bineado en base 10
+        histograma_logbin = np.histogram(kgrados,bins=logbin,density=False)
 
+        # Normalizamos por el ancho de los bines y creamos el vector bin_centros
+        bin_centros = []
+        pk_logbin = []
+
+        for i in range(len(logbin)-1):
+            bin_centros.append((logbin[i+1]+logbin[i])/2)
+            bin_ancho = logbin[i+1]-logbin[i]
+            pk_logbin.append(histograma_logbin[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
+
+        fig=plt.figure(figsize=(8,8))
+        plt.suptitle('Bin log - Escala log',fontsize=25)
+        plt.plot(bin_centros,pk_logbin,'bo')
+        plt.xlabel('$log(k)$',fontsize=20)
+        plt.xscale('log')
+        plt.ylabel('$log(p_{k})$',fontsize=20)
+        plt.yscale('log')
+        plt.title('Bin log - Escala log',fontsize=20)
     
-    # Escala logaritmica en ambos ejes
-    fig=plt.figure(figsize=(16,8))
-    plt.suptitle('Bin log - Escala log',fontsize=25)
-    
-    plt.subplot(1, 2, 1)
-    plt.plot(bin_centros_out,pk_logbin_out,'bo')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('$log (k)$',fontsize=20)
-    plt.ylabel('$log (p_{k})$',fontsize=20)
-    plt.title('Enlaces salientes',fontsize=20)
-    
-    plt.subplot(1, 2, 2)
-    plt.plot(bin_centros_in,pk_logbin_in,'bo')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('$log (k)$', fontsize=20)
-    plt.ylabel('$log (p_{k})$', fontsize=20)
-    plt.title('Enlaces entrantes',fontsize=20)
+    elif modelo == 'directed':
+        #calculo los grados que salen y entran de cada nodo
+        kgrados_out = [H.out_degree(nodo) for nodo in nodos]
+        kgrados_in = [H.in_degree(nodo) for nodo in nodos]
+
+        # Contamos la cantidad de nodos que tienen un cierto k_grado, usando la funcion np.unique()
+        # Guardamos el resultado en la variable histograma
+        histograma_out = np.unique(kgrados_out,return_counts=True)
+        k_out = histograma_out[0] # grados
+        pk_out = histograma_out[1]/float(N) # pk = Nk/N, donde N es el numero total de nodos (cuentas normalizadas)
+        maxgrado_out = max(k_out) #maximo grado
+
+        logbin_out = np.logspace(0,np.log10(maxgrado_out),num=20,endpoint=True,base=10) # bineado en base 10
+        histograma_logbin_out = np.histogram(kgrados_out,bins=logbin_out,density=False)
+
+        # Normalizamos por el ancho de los bines y creamos el vector bin_centros
+        bin_centros_out = []
+        pk_logbin_out = []
+        for i in range(len(logbin_out)-1):
+            bin_centros_out.append((logbin_out[i+1]+logbin_out[i])/2)
+            bin_ancho = logbin_out[i+1]-logbin_out[i]
+            pk_logbin_out.append(histograma_logbin_out[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
+        #idem in
+        histograma_in = np.unique(kgrados_in,return_counts=True)
+        k_in = histograma_in[0] # grados
+        pk_in = histograma_in[1]/float(N) # pk = Nk/N, donde N es el numero total de nodos (cuentas normalizadas)
+        maxgrado_in = max(k_in) #maximo grado
+
+        logbin_in = np.logspace(0,np.log10(maxgrado_in),num=20,endpoint=True,base=10) # bineado en base 10
+        histograma_logbin_in = np.histogram(kgrados_in,bins=logbin_in,density=False)
+
+        # Normalizamos por el ancho de los bines y creamos el vector bin_centros
+        bin_centros_in = []
+        pk_logbin_in = []
+        for i in range(len(logbin_in)-1):
+            bin_centros_in.append((logbin_in[i+1]+logbin_in[i])/2)
+            bin_ancho = logbin_in[i+1]-logbin_in[i]
+            pk_logbin_in.append(histograma_logbin_in[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
+        # Escala logaritmica en ambos ejes
+        fig=plt.figure(figsize=(16,8))
+        plt.suptitle('Bin log - Escala log',fontsize=25)
+
+        plt.subplot(1, 2, 1)
+        plt.plot(bin_centros_out,pk_logbin_out,'bo')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlabel('$log (k)$',fontsize=20)
+        plt.ylabel('$log (p_{k})$',fontsize=20)
+        plt.title('Enlaces salientes',fontsize=20)
+
+        plt.subplot(1, 2, 2)
+        plt.plot(bin_centros_in,pk_logbin_in,'bo')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlabel('$log (k)$', fontsize=20)
+        plt.ylabel('$log (p_{k})$', fontsize=20)
+        plt.title('Enlaces entrantes',fontsize=20)
 
     #plt.show()
    
-    #return(fig)
-#-----------------------------------------------------------------------------------
-
-def f_grado_dist_R(G):
-    
-    H=G.copy()
-    nodos=H.nodes() 
-    N=len(nodos)
-    #calculo los grados que salen y entran de cada nodo
-    kgrados = [H.degree(nodo) for nodo in nodos]
-    
-    
-    # Contamos la cantidad de nodos que tienen un cierto k_grado, usando la funcion np.unique()
-    # Guardamos el resultado en la variable histograma
-    histograma = np.unique(kgrados,return_counts=True)
-    k = histograma[0] # grados
-    pk = histograma[1]/float(N) # pk = Nk/N, donde N es el numero total de nodos (cuentas normalizadas)
-    maxgrado = max(k) #maximo grado
-    
-    logbin = np.logspace(0,np.log10(maxgrado),num=20,endpoint=True,base=10) # bineado en base 10
-    histograma_logbin = np.histogram(kgrados,bins=logbin,density=False)
-    
-    # Normalizamos por el ancho de los bines y creamos el vector bin_centros
-    bin_centros = []
-    pk_logbin = []
-
-    for i in range(len(logbin)-1):
-        bin_centros.append((logbin[i+1]+logbin[i])/2)
-        bin_ancho = logbin[i+1]-logbin[i]
-        pk_logbin.append(histograma_logbin[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
-
-    
-    fig=plt.figure(figsize=(8,8))
-    
-    plt.plot(bin_centros,pk_logbin,'bo')
-    plt.xlabel('$log(k)$',fontsize=20)
-    plt.xscale('log')
-    plt.ylabel('$log(p_{k})$',fontsize=20)
-    plt.yscale('log')
-    plt.title('Bin log - Escala log',fontsize=20)
-    #plt.show()
-
     #return(fig)
 #-----------------------------------------------------------------------------------
 
@@ -725,17 +712,20 @@ def f_tabla(G,nombre):
     # Densidad de la red uso density(G) (d = numero enlaces/enlaces maximos posibles)
     d = nx.density(H)
 
-    # Coef de clustering medio:
-    # c_1 = #triangulos con vertice en 1 / triangulos posibles con vertice en 1
-    # C_mean es el promedio de los c_i sobre todos los nodos de la red
-    C_mean = nx.average_clustering(H)
+    if type(H) =='networkx.classes.digraph.DiGraph' or 'networkx.classes.graph.Graph':
+        # Coef de clustering medio:
+        # c_1 = #triangulos con vertice en 1 / triangulos posibles con vertice en 1
+        # C_mean es el promedio de los c_i sobre todos los nodos de la red
+        C_mean = nx.average_clustering(H)
 
-    # Clausura transitiva de la red o Global Clustering o Transitividad:
-    # C_g = 3*nx.triangles(G1) / sumatoria sobre (todos los posibles triangulos)
-    C_gclust = nx.transitivity(H)
-
+        # Clausura transitiva de la red o Global Clustering o Transitividad:
+        # C_g = 3*nx.triangles(G1) / sumatoria sobre (todos los posibles triangulos)
+        C_gclust = nx.transitivity(H)
+    else:
+        C_mean= 'NaN'
+        C_gclust= 'NaN'
+        
     # Para calcular el diametro (la maxima longitud) primero hay que encontrar el mayor subgrafo conexo
-    
     if nx.is_directed(G) == False:
         giant_graph = max(nx.connected_component_subgraphs(H),key=len)
         diam = nx.diameter(giant_graph)
