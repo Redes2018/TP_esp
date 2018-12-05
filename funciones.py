@@ -1327,14 +1327,14 @@ def f_dist_escalas(cancion, nombre_parte=0):
     if type(nombre_parte)==int:
         try:
             part = song.parts[nombre_parte]
-            print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[nombre_parte]))
+            #print('Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[nombre_parte]))
         except IndexError:
             part = song.parts[0]
-            print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+            #print(nombre_parte+' no es un índice aceptable. Partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
     # Si el input es nombre (str) y no está entre las partes, selecciona la primera voz
     elif not nombre_parte in lista_partes: 
         part = song.parts[0]
-        print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
+        #print(nombre_parte+' no está entre las partes: '+str(lista_partes)+'. Parte seleccionada: '+str(lista_partes[0]))
     else:
         indexes = [index for index, name in enumerate(lista_partes) if name == nombre_parte]
         if len(indexes)==1:
@@ -1343,7 +1343,7 @@ def f_dist_escalas(cancion, nombre_parte=0):
             part = []
             for j in indexes:
                 part.append(song.parts[j])
-        print('Partes: '+str(lista_partes)+'. Parte(s) seleccionada(s): '+str([lista_partes[i] for i in indexes]))
+        #print('Partes: '+str(lista_partes)+'. Parte(s) seleccionada(s): '+str([lista_partes[i] for i in indexes]))
     # En cualquier caso, devuelve una lista de partes y cuál selecciona (y aclaraciones neccesarias de cada caso)
 
     # Crea la(s) voz(ces) analizada(s) (todos los compases) y se queda con
@@ -1402,6 +1402,8 @@ def f_dist_escalas(cancion, nombre_parte=0):
     if type(part) == list:
         Gs = [] # Va a ser una lista de grafos, uno por cada voz analizada
         for j,dist in enumerate(lista_dist):
+            if len(dist)==0:
+                continue
             G = nx.DiGraph()
             oct_min = int(min((np.floor(np.array(dist)/12))))
             # Nodos
@@ -1423,7 +1425,7 @@ def f_dist_escalas(cancion, nombre_parte=0):
                 else:
                     G.add_edge(dist[i],dist[i+1],weight=1) # si el enlace no existe, se crea con peso 1
             Gs.append(G)
-    else:
+    elif len(distancias)>0:
         G = nx.DiGraph()
 
         oct_min = int(min((np.floor(np.array(distancias)/12))))
@@ -1447,6 +1449,8 @@ def f_dist_escalas(cancion, nombre_parte=0):
             else:
                 G.add_edge(distancias[i],distancias[i+1],weight=1) # si el enlace no existe, se crea con peso 1
         Gs = G
+    else:
+        return None
     return(Gs)
 
 #---------------------------------------------------------------------------
