@@ -363,9 +363,9 @@ def ql_2_fig(ql):
 
     figura='no está en la lista'
     
-    quarter_lengths=[0.5/3,0.25,1/3,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0]
-    figuras=['tresillo de semicorchea','semicorchea','tresillo de corchea','corchea','corchea puntillo','negra','negra semicorchea','negra puntillo','negra doble puntillo','blanca','blanca semicorchea','blanca corchea','blanca corchea puntillo','blanca puntillo','blanca puntillo semicorchea','blanca puntillo corchea','blanca puntillo corchea puntillo','redonda']
-    figuras_abrev=['ts','s','tc','c','cp','n','ns','np','npp','b','bs','bc','bcp','bp','bps','bpc','bpcp','r']
+    quarter_lengths=[1/8,0.5/3,0.25,1.0/3,0.5,2.0/3,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0]
+    figuras=['fusa','tresillo de semicorchea','semicorchea','tresillo de corchea','corchea','negra en tresillo','corchea puntillo','negra','negra semicorchea','negra puntillo','negra doble puntillo','blanca','blanca semicorchea','blanca corchea','blanca corchea puntillo','blanca puntillo','blanca puntillo semicorchea','blanca puntillo corchea','blanca puntillo corchea puntillo','redonda']
+    figuras_abrev=['f','ts','s','tc','c','tn','cp','n','ns','np','npp','b','bs','bc','bcp','bp','bps','bpc','bpcp','r']
     index=indice(quarter_lengths,ql)
     if type(index) is not str:
         figura=figuras_abrev[index]
@@ -431,7 +431,7 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=0):
 			if isinstance(el,msc.note.Note):
 				rhytms_compas.append(float(el.quarterLength))
 			elif isinstance(el,msc.note.Rest):
-				rhytms_compas.append('rest/'+ql_2_fig(el.quarterLength))
+				rhytms_compas.append('rest/'+ql_2_fig(float(el.quarterLength)))
 
 		#Una vez creada la lista rhytm_compas empiezo a recorrerla tomando grupos de notas de tamano segun lo indique en length:
 		for r in range(0,len(rhytms_compas)-length+1):
@@ -439,9 +439,10 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=0):
 			for l in range(0,length):
 				#motif.append(rhytms[r+l])
 				if  type(rhytms_compas[r+l]) is not str:
-					motif.append(ql_2_fig(rhytms_compas[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.
+                                    #motif.append(rhytms_compas[r+l])
+				    motif.append(ql_2_fig(rhytms_compas[r+l]))#aca se le puede descomentar para que guarde los motifs con el nombre de la figura usando la funcion ql_2_fig.  
 				else:
-					motif.append(rhytms_compas[r+l])
+				    motif.append(rhytms_compas[r+l])
 			#una vez tengo armado un motif me fijo si esta en la lista motifs
 			if (motif in motifs)==False:
 				motifs.append(motif)
@@ -455,20 +456,20 @@ def f_motifs_rhytmic(cancion,length,nombre_parte=0):
 
 	#Grafico
 	#plt.figure
-	yTick_position=[]
-	yTick_name=[]
-	contador=-1
-	contador_tick=-0.5
-	motif_umbral=0
-	for m,motif in enumerate(motifs_rhytmic):
-		if frecuencias[m]>motif_umbral:
-			contador+=1
-			contador_tick+=1
-			plt.barh(contador,frecuencias[m],color='red')
-			yTick_position.append(contador_tick)
-			yTick_name.append(motif)
-	plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=10)
-	plt.title('Rhytmics '+str(length)+'-Motifs',fontsize=20)
+	#yTick_position=[]
+	#yTick_name=[]
+	#contador=-1
+	#contador_tick=-0.5
+	#motif_umbral=0
+	#for m,motif in enumerate(motifs_rhytmic):
+	#	if frecuencias[m]>motif_umbral:
+	#		contador+=1
+	#		contador_tick+=1
+	#		plt.barh(contador,frecuencias[m],color='red')
+	#		yTick_position.append(contador_tick)
+	#		yTick_name.append(motif)
+	#plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=10)
+	#plt.title('Rhytmics '+str(length)+'-Motifs',fontsize=20)
 	#plt.show() 
 	
 	return (motifs_rhytmic,frecuencias)
