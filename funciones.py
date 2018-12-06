@@ -2428,17 +2428,28 @@ def random_walk_1_M(G,c):
         
     return(ls)
 #---------------------------------------------------------------------------------
-def f_list2seq(lista,nombre):
+def f_list2seq(lista,nombre,absoluto=False):
     # Toma una lista de notas (generadas por la caminata al azar) y genera un stream
     # Guarda la partitura xml y el audio midi con el nombre asignado
     lista = [x.split("/") for x in lista]
     notas = lista.copy()
     L = len(notas)
-    for i in range(L):
-        if lista[i][0]=='rest':
-            notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
-        else:
-            notas[i] = msc.note.Note(lista[i][0],quarterLength=float(lista[i][1]))
+    if absoluto==False:
+        for i in range(L):
+            if lista[i][0]=='rest':
+                notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
+            else:
+                notas[i] = msc.note.Note(lista[i][0],quarterLength=float(lista[i][1]))
+    elif absoluto==True:
+        for i in range(L):
+            if lista[i][0]=='rest':
+                notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
+            else:
+                intervalo = msc.interval.Interval(lista[i][0])
+                intervalo.noteStart = msc.note.Note('A4')
+                notas[i] = intervalo.noteEnd
+                notas[i].quarterLength=float(lista[i][1])
+    
     cancion = msc.stream.Stream()
     for i in range(L):
         cancion.append(notas[i])
