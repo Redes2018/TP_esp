@@ -161,13 +161,14 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                         notas[i] = nota_name
 
                     elif isinstance(el,msc.note.Rest):
-                        nota_name = str('rest')
+                        nota_name = str(el.name)+'/'+str(el.quarterLength)
                         if not G.has_node(nota_name):
                             G.add_node(nota_name)
                             G.node[nota_name]['freq'] = 2**(1/(2*np.pi))*20
                             #G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
                             G.node[nota_name]['octava'] = 0 # Aca cambie esto para que le asignemos octava 0 y asi no cambia de voz a voz.
-                            G.node[nota_name]['duracion'] = 1
+                            #G.node[nota_name]['duracion'] = 1 # Esto es para que haga un único nodo con todos los silencios
+                            G.node[nota_name]['duracion'] = el.quarterLength
                         notas[i] = nota_name
 
             elif modelo == 'ritmo':
@@ -239,13 +240,14 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                     notas[i] = nota_name
 
                 elif isinstance(el,msc.note.Rest):
-                    nota_name = str('rest')
+                    nota_name = str(el.name)+'/'+str(el.quarterLength)
                     if not G.has_node(nota_name):
                         G.add_node(nota_name)
                         G.node[nota_name]['freq'] = 2**(1/(2*np.pi))*20
                         #G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
                         G.node[nota_name]['octava'] = 0 # Aca cambie esto para que le asignemos octava 0 y asi no cambia de voz a voz.
-                        G.node[nota_name]['duracion'] = 1
+                        #G.node[nota_name]['duracion'] = 1 # Esto es para que haga un único nodo con todos los silencios
+                        G.node[nota_name]['duracion'] = el.quarterLength
                     notas[i] = nota_name
 
         elif modelo == 'ritmo':
@@ -1392,6 +1394,7 @@ def f_dist_escalas(cancion, nombre_parte=0):
 
         for index in indices:
             del notas[index]
+        #for i in range(len(notas)):
         intervalos = [msc.interval.Interval(tonica, nota) for nota in notas]
         distancias = [i.semitones for i in intervalos]
         duraciones = [nota.quarterLength for nota in notas]
@@ -2387,15 +2390,16 @@ def f_list2seq(lista,nombre):
     notas = lista.copy()
     L = len(notas)
     for i in range(L):
-        if len(lista[i])==2:
+        if lista[i][0]=='rest':
+            notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
+        else:
             notas[i] = msc.note.Note(lista[i][0],quarterLength=float(lista[i][1]))
-        elif len(lista[i])==1:
-            notas[i] = msc.note.Rest(quarterLength=1.0)
     cancion = msc.stream.Stream()
     for i in range(L):
         cancion.append(notas[i])
     cancion.write("MusicXML", nombre+".xml")
     cancion.write("Midi", nombre+".mid")
+
 #------------------------------------------------------------------------------------
 def f_compose(G,H):
     #modelo puede ser: 'melodia','absoluto','ritmo','AD' y 'AU'
