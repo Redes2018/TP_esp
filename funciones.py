@@ -2416,7 +2416,6 @@ def f_compose(G,H):
         #Enlaces
         enlacesG=G.edges()
         enlacesH=H.edges()
-        print(enlacesH)
         enlacesG_H=list(set(enlacesG).difference(set(enlacesH)))
         enlacesH_G=list(set(enlacesH).difference(set(enlacesG)))
         enlacesintersection=list(set(enlacesG).intersection(set(enlacesH)))
