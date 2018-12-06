@@ -165,7 +165,8 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                         if not G.has_node(nota_name):
                             G.add_node(nota_name)
                             G.node[nota_name]['freq'] = 2**(1/(2*np.pi))*20
-                            G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
+                            #G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
+                            G.node[nota_name]['octava'] = 0 # Aca cambie esto para que le asignemos octava 0 y asi no cambia de voz a voz.
                             G.node[nota_name]['duracion'] = 1
                         notas[i] = nota_name
 
@@ -191,7 +192,7 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                             G.add_node(nota_name)
                             d = el.quarterLength
                             G.node[nota_name]['freq'] = 2**(d/(2*np.pi))*20
-                            G.node[nota_name]['octava'] = 0.1
+                            G.node[nota_name]['octava'] = 0 # Aca cambie esto para que le asignemos octava 0 y asi no cambia de voz a voz.
                             G.node[nota_name]['duracion'] = d
                         notas[i] = nota_name
 
@@ -203,6 +204,8 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                 else:
                     G.add_edge(notas[i],notas[i+1],weight=1) # si el enlace no existe, se crea con peso 1
             # Finalmente, agrego atributo posicion (se debe hacer al final, porque necesita todos los nodos):
+            #Comente esta parte para que la posicion la asigne unicamente cuando terminamos de mergear y vamos a graficar
+            '''
             nodos = G.nodes()
             freq_min = min(np.array(list(nx.get_node_attributes(G,'freq').values())))
             for nodo in nodos:
@@ -213,7 +216,7 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                 y = np.sin(theta)*f/freq_min*(1+d/4)
                 G.node[nodo]['x'] = x
                 G.node[nodo]['y'] = y
-
+            '''
             Gs.append(G)
         if len(Gs)==1:
             Gs = Gs[0]
@@ -240,7 +243,8 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                     if not G.has_node(nota_name):
                         G.add_node(nota_name)
                         G.node[nota_name]['freq'] = 2**(1/(2*np.pi))*20
-                        G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
+                        #G.node[nota_name]['octava'] = oct_min-1 # A los silencios se les asocia una octava menos que las notas, para el grafico
+                        G.node[nota_name]['octava'] = 0 # Aca cambie esto para que le asignemos octava 0 y asi no cambia de voz a voz.
                         G.node[nota_name]['duracion'] = 1
                     notas[i] = nota_name
 
@@ -266,7 +270,7 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
                         G.add_node(nota_name)
                         d = el.quarterLength
                         G.node[nota_name]['freq'] = 2**(d/(2*np.pi))*20
-                        G.node[nota_name]['octava'] = 0.1
+                        G.node[nota_name]['octava'] = 0
                         G.node[nota_name]['duracion'] = d
                     notas[i] = nota_name
 
@@ -278,6 +282,7 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
             else:
                 G.add_edge(notas[i],notas[i+1],weight=1) # si el enlace no existe, se crea con peso 1
         # Finalmente, agrego atributo posicion (se debe hacer al final, porque necesita todos los nodos):
+        '''
         nodos = G.nodes()
         freq_min = min(np.array(list(nx.get_node_attributes(G,'freq').values())))
         for nodo in nodos:
@@ -288,6 +293,7 @@ def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'):
             y = np.sin(theta)*f/freq_min*(1+d/4)
             G.node[nodo]['x'] = x
             G.node[nodo]['y'] = y
+        '''
         Gs = G
     else:
         return None
@@ -327,7 +333,8 @@ def graficar(G, color_map='rainbow',layout='espiral', labels=False):
 	colores_oct = m.to_rgba(colores_oct_nro)
 	
 	#Grafico
-	grados = np.array([d for d in dict(nx.degree(G)).values()])
+	#grados = np.array([d for d in dict(nx.degree(G)).values()])#comente esta linea y agregue la de arriba porque estaba mapeando mal los grados.
+	grados = np.array([G.degree(d) for d in nodos])
 	deg_max = max(grados)
 	n_size = (grados/deg_max)
 	nx.draw_networkx_nodes(G,pos,node_list=nodos,node_color=colores_oct,node_size=500*n_size)
@@ -591,8 +598,8 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
             bin_ancho = logbin[i+1]-logbin[i]
             pk_logbin.append(histograma_logbin[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
 
-        #fig=plt.figure(figsize=(8,8))
-        #plt.suptitle('Bin log - Escala log',fontsize=25)
+        fig=plt.figure(figsize=(8,8))
+        plt.suptitle('Bin log - Escala log',fontsize=25)
         plt.plot(bin_centros,pk_logbin,'bo')
         plt.xlabel('$log(k)$',fontsize=20)
         plt.xscale('log')
@@ -639,8 +646,8 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
             bin_ancho = logbin_in[i+1]-logbin_in[i]
             pk_logbin_in.append(histograma_logbin_in[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
         # Escala logaritmica en ambos ejes
-        #fig=plt.figure(figsize=(16,8))
-        #plt.suptitle('Bin log - Escala log',fontsize=25)
+        fig=plt.figure(figsize=(16,8))
+        plt.suptitle('Bin log - Escala log',fontsize=25)
 
         plt.subplot(1, 2, 1)
         plt.plot(bin_centros_out,pk_logbin_out,'bo')
@@ -658,7 +665,11 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
         plt.ylabel('$log (p_{k})$', fontsize=20)
         plt.title('Enlaces entrantes',fontsize=20)
 
+    #plt.show()
+   
+    #return(fig)
 #-----------------------------------------------------------------------------------
+
 def f_tabla(G,nombre):
     
     H=G.copy()
@@ -709,7 +720,7 @@ def f_tabla(G,nombre):
     # Densidad de la red uso density(G) (d = numero enlaces/enlaces maximos posibles)
     d = nx.density(H)
 
-    if type(H) =='networkx.classes.digraph.DiGraph':
+    if type(H) =='networkx.classes.digraph.DiGraph' or 'networkx.classes.graph.Graph':
         # Coef de clustering medio:
         # c_1 = #triangulos con vertice en 1 / triangulos posibles con vertice en 1
         # C_mean es el promedio de los c_i sobre todos los nodos de la red
@@ -718,10 +729,6 @@ def f_tabla(G,nombre):
         # Clausura transitiva de la red o Global Clustering o Transitividad:
         # C_g = 3*nx.triangles(G1) / sumatoria sobre (todos los posibles triangulos)
         C_gclust = nx.transitivity(H)
-    elif type(H) == 'networkx.classes.graph.Graph':
-        C_mean = nx.average_clustering(H)
-        C_gclust = nx.transitivity(H)
-
     else:
         C_mean= 'NaN'
         C_gclust= 'NaN'
@@ -2387,11 +2394,29 @@ def f_compose(G,H):
         #Nodos:
         nodosG=G.nodes()
         nodosH=H.nodes()
-        nodosunion=list(set(nodosG).union(set(nodosH)))
-        F.add_nodes_from(nodosunion)
+        nodosG_H=list(set(nodosG).difference(set(nodosH)))
+        nodosH_G=list(set(nodosH).difference(set(nodosG)))
+        nodosintersection=list(set(nodosG).intersection(set(nodosH)))
+        for nodo in nodosG_H:
+            F.add_node(nodo)
+            F.node[nodo]['freq']= G.node[nodo]['freq']
+            F.node[nodo]['duracion']= G.node[nodo]['duracion']
+            F.node[nodo]['octava']=G.node[nodo]['octava']
+        for nodo in nodosH_G:
+            F.add_node(nodo)
+            F.node[nodo]['freq']= H.node[nodo]['freq']
+            F.node[nodo]['duracion']= H.node[nodo]['duracion']
+            F.node[nodo]['octava']=H.node[nodo]['octava']
+        for nodo in nodosintersection:
+            F.add_node(nodo)
+            F.node[nodo]['freq']= G.node[nodo]['freq']
+            F.node[nodo]['duracion']= G.node[nodo]['duracion']
+            F.node[nodo]['octava']=G.node[nodo]['octava']
+        
         #Enlaces
         enlacesG=G.edges()
         enlacesH=H.edges()
+        print(enlacesH)
         enlacesG_H=list(set(enlacesG).difference(set(enlacesH)))
         enlacesH_G=list(set(enlacesH).difference(set(enlacesG)))
         enlacesintersection=list(set(enlacesG).intersection(set(enlacesH)))
