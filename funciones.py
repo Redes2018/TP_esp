@@ -1422,7 +1422,7 @@ def f_dist_escalas(cancion, nombre_parte=0):
                 duraciones.append(nota.quarterLength)
             elif type(nota) == msc.note.Rest:
                 intervalos.append(0) # Es solo para mantener la longitud de la lista
-                distancias.append(-48)
+                distancias.append(-48) # Distancia en semitonos a algo de freq cercana a 20Hz
                 duraciones.append(nota.quarterLength)
 
     # Crea una lista de distancias en st (distancias) o una lista de listas (por cada voz) (lista_dist)
