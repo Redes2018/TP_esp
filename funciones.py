@@ -1646,6 +1646,7 @@ def f_transitivity_motifs(G):
         #Histograma
         transitivity_motifs=[list(i) for i in set(tuple(i) for i in ids_clique)]
         hist_transitivity_motifs = [(x, ids_clique.count(x)) for x in transitivity_motifs]
+        '''
         plt.figure
         yTick_position=[]
         yTick_name=[]
@@ -1662,8 +1663,8 @@ def f_transitivity_motifs(G):
         plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=8)
         plt.title('Transitivity '+str(k)+'-motifs',fontsize=20)
         plt.show()
-
-        return(cliques_k,estados_clique)
+        '''
+        return(hist_transitivity_motifs)
 #---------------------------------------------------------------
 def f_rewiring_directed(G):
     #Funcion de grafo G que toma un grafo dirigido y realiza un recableado
