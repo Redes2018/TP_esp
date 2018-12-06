@@ -598,7 +598,7 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
             bin_ancho = logbin[i+1]-logbin[i]
             pk_logbin.append(histograma_logbin[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
 
-        fig=plt.figure(figsize=(8,8))
+        #plt.figure(figsize=(8,8))
         plt.suptitle('Bin log - Escala log',fontsize=25)
         plt.plot(bin_centros,pk_logbin,'bo')
         plt.xlabel('$log(k)$',fontsize=20)
@@ -646,7 +646,7 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
             bin_ancho = logbin_in[i+1]-logbin_in[i]
             pk_logbin_in.append(histograma_logbin_in[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
         # Escala logaritmica en ambos ejes
-        fig=plt.figure(figsize=(16,8))
+        #plt.figure(figsize=(16,8))
         plt.suptitle('Bin log - Escala log',fontsize=25)
 
         plt.subplot(1, 2, 1)
@@ -1459,14 +1459,23 @@ def f_full_graph(path,voz_principal=False): #hay que pasarle una direccion para 
     ls_r=[]
     ls_d=[]
     
+    #creo los grafos
+    M = nx.DiGraph()
+    A = nx.DiGraph()
+    R = nx.DiGraph()
+    AD= nx.MultiDiGraph()
+    AU= nx.MultiGraph()
+    
+    #El análisis de armonias va a seguir siendo para todas las voces independientemente de lo que estemos viendo.
     song = msc.converter.parse(path)
     L=len(song.parts) #recorro todas las voces
-    voces=song.parts #quiero que grafique todas las voces
-    indexes=list(range(len(voces)))
+    #voces=song.parts #quiero que grafique todas las voces
+    #indexes=list(range(len(voces)))
     #para las armonias si le paso la lista con todas las voces me devuelve ya todo combinado
-    armon,tiempos,D,U=f_armon (path, indexes); #analizamos las armonias
+    #armon,tiempos,D,U=f_armon (path, indexes); #analizamos las armonias
     
     if voz_principal==False:
+        
         for i in range(L):
             #Uno los grafos en uno para cada voz para melodia
             m=f_xml2graph(path, nombre_parte=i, modelo='melodia');
@@ -1479,9 +1488,15 @@ def f_full_graph(path,voz_principal=False): #hay que pasarle una direccion para 
                 ls_d.append(dist)
             if str(m.__class__) != "<class 'NoneType'>": 
                 ls_m.append(m)
-        M=nx.compose_all(ls_m)
-        A=nx.compose_all(ls_d) # A de Absoluto, porque es el de las distancias a la tonica
-        R=nx.compose_all(ls_r)
+                
+        for i,elem in enumerate(ls_m):
+            M=f_compose(M,ls_m[i]) 
+        for i,elem in enumerate(ls_d):
+            A=f_compose(A,ls_d[i]) # A de Absoluto, porque es el de las distancias a la tonica
+        for i,elem in enumerate(ls_r):
+            R=f_compose(R,ls_r[i])
+            
+            
     elif voz_principal==True:
         M = f_xml2graph(path)
         A = f_dist_escalas(path) 
@@ -1491,7 +1506,7 @@ def f_full_graph(path,voz_principal=False): #hay que pasarle una direccion para 
         A = f_dist_escalas(path,nombre_parte=voz_principal) 
         R = f_xml2graph(path,nombre_parte=voz_principal, modelo='ritmo')
         
-    return(M,A,R,D,U)
+    return(M,A,R,AD,AU)
 
 #---------------------------------------------------------------------------
 def f_hierarchy(G): #grafica Ck vs K en log, y a partir de eso uno ve si es una red jerárquica
@@ -1522,7 +1537,7 @@ def f_hierarchy(G): #grafica Ck vs K en log, y a partir de eso uno ve si es una 
         cs_err.append((1/np.log(10))*(1/Cs_prom[i])*Cs_error[i])
     
     
-    plt.figure(figsize=(9,9))
+    #plt.figure(figsize=(9,9))
     plt.plot(grados,Cs_prom,'bo')
     #plt.errorbar(grados, Cs_prom, xerr=None, yerr=cs_err, fmt=' ',ecolor='green',elinewidth=5,capsize=5,markersize=3)
     plt.xscale('log')
@@ -1531,7 +1546,7 @@ def f_hierarchy(G): #grafica Ck vs K en log, y a partir de eso uno ve si es una 
     plt.xlabel('$k$')
     plt.ylabel('$C(k)$')
     plt.title('Bin lineal - Escala log')
-    plt.show()
+    #plt.show()
 #------------------------------------------------------------------------------
 def f_transitivity_motifs(G):
         #Toma un grafico dirigido y busca todos los 3-cliques.
@@ -2329,7 +2344,7 @@ def f_graficar_2dy3d(cancion,indexes):
     plt.show()
 #---------------------------------------------------------------------------------
 #toma un grafo y la cantidad de los nuevos nodos. Devuelve una lista random con las notas
-def random_walk_1_M(G,k):
+def random_walk_1_M(G,c):
     ls = []
     nodos=list(G.nodes())
     #Me armo un dict, con el key del nombre del nodo y una lista
@@ -2348,7 +2363,7 @@ def random_walk_1_M(G,k):
     #Hago la caminata
     #Me paro en algun nodo inicial random
     nodo_i=random.choice(nodos)
-    for i in range(k):
+    for i in range(c):
         if i == 0: #para el primer paso
             ls.append(nodo_i)
             #Para ese nodo inicial veo que elementro de matriz le corresponde
@@ -2382,15 +2397,15 @@ def f_list2seq(lista,nombre):
     cancion.write("Midi", nombre+".mid")
 #------------------------------------------------------------------------------------
 def f_compose(G,H):
+    #modelo puede ser: 'melodia','absoluto','ritmo','AD' y 'AU'
     #recibe un grafo G y otro H y devuelve un grafo compuesto de ambos.
     #El peso resultante es la suma de los pesos de los enlaces en comun si los hubiese.
     #Chequeamos los tipos de grafos:
-    
     if type(G)!=type(H):
         out=0
     elif type(G)==type(H):
         out=1
-        F=nx.DiGraph()
+        F = nx.DiGraph()
         #Nodos:
         nodosG=G.nodes()
         nodosH=H.nodes()
@@ -2416,7 +2431,7 @@ def f_compose(G,H):
         #Enlaces
         enlacesG=G.edges()
         enlacesH=H.edges()
-        print(enlacesH)
+        #print(enlacesH)
         enlacesG_H=list(set(enlacesG).difference(set(enlacesH)))
         enlacesH_G=list(set(enlacesH).difference(set(enlacesG)))
         enlacesintersection=list(set(enlacesG).intersection(set(enlacesH)))
