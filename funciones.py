@@ -39,6 +39,7 @@ import random
 # f_get_layers_position
 # f_graficar_2dy3d
 # random_walk_1_M(G,k)
+# f_compose(G,H)
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -2372,3 +2373,46 @@ def f_list2seq(lista,nombre):
         cancion.append(notas[i])
     cancion.write("MusicXML", nombre+".xml")
     cancion.write("Midi", nombre+".mid")
+#------------------------------------------------------------------------------------
+def f_compose(G,H):
+    #recibe un grafo G y otro H y devuelve un grafo compuesto de ambos.
+    #El peso resultante es la suma de los pesos de los enlaces en comun si los hubiese.
+    #Chequeamos los tipos de grafos:
+    
+    if type(G)!=type(H):
+        out=0
+    elif type(G)==type(H):
+        out=1
+        F=nx.DiGraph()
+        #Nodos:
+        nodosG=G.nodes()
+        nodosH=H.nodes()
+        nodosunion=list(set(nodosG).union(set(nodosH)))
+        F.add_nodes_from(nodosunion)
+        #Enlaces
+        enlacesG=G.edges()
+        enlacesH=H.edges()
+        enlacesG_H=list(set(enlacesG).difference(set(enlacesH)))
+        enlacesH_G=list(set(enlacesH).difference(set(enlacesG)))
+        enlacesintersection=list(set(enlacesG).intersection(set(enlacesH)))
+        #Enlaces G
+        for enlace in enlacesG_H:
+            enlaceweight_G=G.edges[enlace[0],enlace[1]]['weight']
+            F.add_edge(enlace[0],enlace[1])
+            F.edges[enlace[0],enlace[1]]['weight']=enlaceweight_G
+        #Enlaces H
+        for enlace in enlacesH_G:
+            enlaceweight_H=H.edges[enlace[0],enlace[1]]['weight']
+            F.add_edge(enlace[0],enlace[1])
+            F.edges[enlace[0],enlace[1]]['weight']=enlaceweight_H
+        #Enlaces interseccion
+        for enlace in enlacesintersection:
+            enlaceweight_G=G.edges[enlace[0],enlace[1]]['weight']
+            enlaceweight_H=H.edges[enlace[0],enlace[1]]['weight']
+            F.add_edge(enlace[0],enlace[1])
+            F.edges[enlace[0],enlace[1]]['weight']=enlaceweight_G+enlaceweight_H
+        
+    if out==0:
+        return('los tipos de grafo no son compatibles')
+    elif out==1:
+        return(F)
