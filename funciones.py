@@ -591,8 +591,8 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
             bin_ancho = logbin[i+1]-logbin[i]
             pk_logbin.append(histograma_logbin[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
 
-        fig=plt.figure(figsize=(8,8))
-        plt.suptitle('Bin log - Escala log',fontsize=25)
+        #fig=plt.figure(figsize=(8,8))
+        #plt.suptitle('Bin log - Escala log',fontsize=25)
         plt.plot(bin_centros,pk_logbin,'bo')
         plt.xlabel('$log(k)$',fontsize=20)
         plt.xscale('log')
@@ -639,8 +639,8 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
             bin_ancho = logbin_in[i+1]-logbin_in[i]
             pk_logbin_in.append(histograma_logbin_in[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
         # Escala logaritmica en ambos ejes
-        fig=plt.figure(figsize=(16,8))
-        plt.suptitle('Bin log - Escala log',fontsize=25)
+        #fig=plt.figure(figsize=(16,8))
+        #plt.suptitle('Bin log - Escala log',fontsize=25)
 
         plt.subplot(1, 2, 1)
         plt.plot(bin_centros_out,pk_logbin_out,'bo')
@@ -658,11 +658,7 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
         plt.ylabel('$log (p_{k})$', fontsize=20)
         plt.title('Enlaces entrantes',fontsize=20)
 
-    #plt.show()
-   
-    #return(fig)
 #-----------------------------------------------------------------------------------
-
 def f_tabla(G,nombre):
     
     H=G.copy()
@@ -713,7 +709,7 @@ def f_tabla(G,nombre):
     # Densidad de la red uso density(G) (d = numero enlaces/enlaces maximos posibles)
     d = nx.density(H)
 
-    if type(H) =='networkx.classes.digraph.DiGraph' or 'networkx.classes.graph.Graph':
+    if type(H) =='networkx.classes.digraph.DiGraph':
         # Coef de clustering medio:
         # c_1 = #triangulos con vertice en 1 / triangulos posibles con vertice en 1
         # C_mean es el promedio de los c_i sobre todos los nodos de la red
@@ -722,6 +718,10 @@ def f_tabla(G,nombre):
         # Clausura transitiva de la red o Global Clustering o Transitividad:
         # C_g = 3*nx.triangles(G1) / sumatoria sobre (todos los posibles triangulos)
         C_gclust = nx.transitivity(H)
+    elif type(H) == 'networkx.classes.graph.Graph':
+        C_mean = nx.average_clustering(H)
+        C_gclust = nx.transitivity(H)
+
     else:
         C_mean= 'NaN'
         C_gclust= 'NaN'
