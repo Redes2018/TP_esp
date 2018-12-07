@@ -1357,13 +1357,17 @@ def f_dist_escalas(cancion, nombre_parte=0):
         lista_dist = []
         lista_dur = []
         for voice in voz:
-            notes = [x for x in voice.flat if type(x)==msc.note.Note]
-            tiempos = [x.offset for x in voice.flat if type(x)==msc.note.Note]
+            notes = [x for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+            tiempos = [x.offset for x in voice.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
             indices = []
 
             for i in range(len(notes)-1):
                 if tiempos[i+1] == tiempos[i]:
-                    if (notes[i+1].pitch.frequency > notes[i].pitch.frequency):
+                    if type(notes[i+1])==msc.note.Rest:
+                        indices.append(i+1)
+                    elif type(notes[i])==msc.note.Rest:
+                        indices.append(i)
+                    elif (notes[i+1].pitch.frequency > notes[i].pitch.frequency):
                         indices.append(i)
                     else:
                         indices.append(i+1)
@@ -1372,20 +1376,33 @@ def f_dist_escalas(cancion, nombre_parte=0):
 
             for index in indices:
                 del notes[index]
-            intervalos = [msc.interval.Interval(tonica, nota) for nota in notes]
-            distancias = [i.semitones for i in intervalos]
-            duraciones = [nota.quarterLength for nota in notes]
+            intervalos = []
+            distancias = []
+            duraciones = []
+            for i,nota in enumerate(notas):
+                if type(nota) == msc.note.Note:
+                    intervalos.append(msc.interval.Interval(tonica, nota))
+                    distancias.append(intervalos[i].semitones)
+                    duraciones.append(nota.quarterLength)
+                elif type(nota) == msc.note.Rest:
+                    intervalos.append(0) # Es solo para mantener la longitud de la lista
+                    distancias.append(-48)
+                    duraciones.append(nota.quarterLength)
             lista_dist.append(distancias)
             lista_dur.append(duraciones)
     else:
         voz = part.getElementsByClass(msc.stream.Measure)
-        notas = [x for x in voz.flat if type(x)==msc.note.Note]
-        tiempos = [x.offset for x in voz.flat if type(x)==msc.note.Note]
+        notas = [x for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
+        tiempos = [x.offset for x in voz.flat if type(x)==msc.note.Note or type(x)==msc.note.Rest]
         indices = []
 
         for i in range(len(notas)-1):
             if tiempos[i+1] == tiempos[i]:
-                if (notas[i+1].pitch.frequency > notas[i].pitch.frequency):
+                if type(notas[i+1])==msc.note.Rest:
+                    indices.append(i+1)
+                elif type(notas[i])==msc.note.Rest:
+                    indices.append(i)
+                elif (notas[i+1].pitch.frequency > notas[i].pitch.frequency):
                     indices.append(i)
                 else:
                     indices.append(i+1)
@@ -1394,10 +1411,20 @@ def f_dist_escalas(cancion, nombre_parte=0):
 
         for index in indices:
             del notas[index]
-        #for i in range(len(notas)):
-        intervalos = [msc.interval.Interval(tonica, nota) for nota in notas]
-        distancias = [i.semitones for i in intervalos]
-        duraciones = [nota.quarterLength for nota in notas]
+
+        intervalos = []
+        distancias = []
+        duraciones = []
+        for i,nota in enumerate(notas):
+            if type(nota) == msc.note.Note:
+                intervalos.append(msc.interval.Interval(tonica, nota))
+                distancias.append(intervalos[i].semitones)
+                duraciones.append(nota.quarterLength)
+            elif type(nota) == msc.note.Rest:
+                intervalos.append(0) # Es solo para mantener la longitud de la lista
+                distancias.append(-48) # Distancia en semitonos a algo de freq cercana a 20Hz
+                duraciones.append(nota.quarterLength)
+
     # Crea una lista de distancias en st (distancias) o una lista de listas (por cada voz) (lista_dist)
 
     # Creamos el grafo dirigido G o lista de grafos dirigidos Gs si hay mas de una voz
@@ -1411,13 +1438,22 @@ def f_dist_escalas(cancion, nombre_parte=0):
             # Nodos
             # Recorremos todas las notas de la voz
             for i,d in enumerate(dist):
-                nota_name = str(d)+'/'+str(lista_dur[j][i])
-                if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
-                    G.add_node(nota_name)
-                    G.node[nota_name]['freq'] = 440*2**(d/12) # Pongo como frecuencia falsa de tonica: 440
-                    G.node[nota_name]['octava'] = int(np.floor(d/12)) - oct_min+1
-                    G.node[nota_name]['duracion'] = lista_dur[j][i]
-                dist[i] = nota_name
+                if d == -48:
+                    nota_name = 'rest/'+str(lista_dur[j][i])
+                    if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
+                        G.add_node(nota_name)
+                        G.node[nota_name]['freq'] = 20 # Pongo como frecuencia de silencios 20 Hz
+                        G.node[nota_name]['octava'] = 0
+                        G.node[nota_name]['duracion'] = lista_dur[j][i]
+                    dist[i] = nota_name
+                else:
+                    nota_name = str(d)+'/'+str(lista_dur[j][i])
+                    if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
+                        G.add_node(nota_name)
+                        G.node[nota_name]['freq'] = 440*2**(d/12) # Pongo como frecuencia falsa de tonica: 440
+                        G.node[nota_name]['octava'] = int(np.floor(d/12)) - oct_min+1
+                        G.node[nota_name]['duracion'] = lista_dur[j][i]
+                    dist[i] = nota_name
 
             # Enlaces pesados
             L = len(dist)
@@ -1435,13 +1471,22 @@ def f_dist_escalas(cancion, nombre_parte=0):
         # Nodos
         # Recorremos todas las notas de la voz
         for i,d in enumerate(distancias):
-            nota_name = str(d)+'/'+str(duraciones[i])
-            if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
-                G.add_node(nota_name)
-                G.node[nota_name]['freq'] = 440*2**(d/12)
-                G.node[nota_name]['octava'] = int(np.floor(d/12)) - oct_min+1
-                G.node[nota_name]['duracion'] = duraciones[i]
-            distancias[i] = nota_name
+            if d == -48:
+                nota_name = 'rest/'+str(duraciones[i])
+                if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
+                    G.add_node(nota_name)
+                    G.node[nota_name]['freq'] = 20
+                    G.node[nota_name]['octava'] = 0
+                    G.node[nota_name]['duracion'] = duraciones[i]
+                distancias[i] = nota_name
+            else:
+                nota_name = str(d)+'/'+str(duraciones[i])
+                if not G.has_node(nota_name): # Si el grafo no tiene el nodo, lo agregamos con los atributos que se quieran
+                    G.add_node(nota_name)
+                    G.node[nota_name]['freq'] = 440*2**(d/12)
+                    G.node[nota_name]['octava'] = int(np.floor(d/12)) - oct_min+1
+                    G.node[nota_name]['duracion'] = duraciones[i]
+                distancias[i] = nota_name
         
         # Enlaces pesados
         L = len(distancias)
@@ -1601,6 +1646,7 @@ def f_transitivity_motifs(G):
         #Histograma
         transitivity_motifs=[list(i) for i in set(tuple(i) for i in ids_clique)]
         hist_transitivity_motifs = [(x, ids_clique.count(x)) for x in transitivity_motifs]
+        '''
         plt.figure
         yTick_position=[]
         yTick_name=[]
@@ -1617,8 +1663,8 @@ def f_transitivity_motifs(G):
         plt.yticks(yTick_position,yTick_name, rotation=0,fontsize=8)
         plt.title('Transitivity '+str(k)+'-motifs',fontsize=20)
         plt.show()
-
-        return(cliques_k,estados_clique)
+        '''
+        return(hist_transitivity_motifs)
 #---------------------------------------------------------------
 def f_rewiring_directed(G):
     #Funcion de grafo G que toma un grafo dirigido y realiza un recableado
@@ -2383,17 +2429,33 @@ def random_walk_1_M(G,c):
         
     return(ls)
 #---------------------------------------------------------------------------------
-def f_list2seq(lista,nombre):
+def f_list2seq(lista_random,nombre,absoluto=False):
     # Toma una lista de notas (generadas por la caminata al azar) y genera un stream
     # Guarda la partitura xml y el audio midi con el nombre asignado
-    lista = [x.split("/") for x in lista]
-    notas = lista.copy()
+    lista = [x.split("/") for x in lista_random]
+    notas = [x.split("/") for x in lista_random]
     L = len(notas)
-    for i in range(L):
-        if lista[i][0]=='rest':
-            notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
-        else:
-            notas[i] = msc.note.Note(lista[i][0],quarterLength=float(lista[i][1]))
+    for elem in lista:
+        if len(elem)==3:
+            elem[1] = float(elem[1])/float(elem[2])
+            del elem[2]
+    
+    if absoluto==False:
+        for i in range(L):
+            if lista[i][0]=='rest':
+                notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
+            else:
+                notas[i] = msc.note.Note(lista[i][0],quarterLength=float(lista[i][1]))
+    elif absoluto==True:
+        for i in range(L):
+            if lista[i][0]=='rest':
+                notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
+            else:
+                intervalo = msc.interval.Interval(int(lista[i][0]))
+                intervalo.noteStart = msc.note.Note('A4')
+                notas[i] = intervalo.noteEnd
+                notas[i].quarterLength=float(lista[i][1])
+
     cancion = msc.stream.Stream()
     for i in range(L):
         cancion.append(notas[i])
