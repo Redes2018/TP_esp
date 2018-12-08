@@ -571,7 +571,6 @@ def f_motifs_tonal(cancion,length,nombre_parte=0):
 
 	return (motifs_tonal,frecuencias)
 #-----------------------------------------------------------------------------------
-
 def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
     
     H=G.copy()
@@ -602,7 +601,7 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
             pk_logbin.append(histograma_logbin[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
 
         #plt.figure(figsize=(8,8))
-        plt.suptitle('Bin log - Escala log',fontsize=25)
+        #plt.suptitle('Bin log - Escala log',fontsize=25)
         plt.plot(bin_centros,pk_logbin,'bo')
         plt.xlabel('$log(k)$',fontsize=20)
         plt.xscale('log')
@@ -649,24 +648,28 @@ def f_grado_dist(G,modelo): #el grafo puede ser dirigido o no dirigido
             bin_ancho = logbin_in[i+1]-logbin_in[i]
             pk_logbin_in.append(histograma_logbin_in[0][i]/(bin_ancho*N)) #normalizamos por el ancho del bin y por el numero total de nodos
         # Escala logaritmica en ambos ejes
-        #plt.figure(figsize=(16,8))
-        plt.suptitle('Bin log - Escala log',fontsize=25)
+        #plt.figure()
+        #plt.suptitle('Bin log - Escala log',fontsize=25)
 
-        plt.subplot(1, 2, 1)
-        plt.plot(bin_centros_out,pk_logbin_out,'bo')
-        plt.xscale('log')
-        plt.yscale('log')
-        plt.xlabel('$log (k)$',fontsize=20)
-        plt.ylabel('$log (p_{k})$',fontsize=20)
-        plt.title('Enlaces salientes',fontsize=20)
+        #plt.subplot(1, 2, 1)
+        #plt.plot(bin_centros_out,pk_logbin_out,'bo')
+        #plt.xscale('log')
+        #plt.yscale('log')
+        #plt.xlabel('$log (k)$',fontsize=20)
+        #ay = plt.gca()
+        #ay.grid(True)
+        #plt.ylabel('$log (p_{k})$',fontsize=20)
+        #plt.title('Enlaces salientes',fontsize=20)
 
-        plt.subplot(1, 2, 2)
+        #plt.subplot(1, 2, 2)
         plt.plot(bin_centros_in,pk_logbin_in,'bo')
         plt.xscale('log')
         plt.yscale('log')
+        ay = plt.gca()
+        ay.grid(True)
         plt.xlabel('$log (k)$', fontsize=20)
         plt.ylabel('$log (p_{k})$', fontsize=20)
-        plt.title('Enlaces entrantes',fontsize=20)
+        #plt.title('Enlaces entrantes',fontsize=20)
 
     #plt.show()
    
@@ -788,7 +791,7 @@ def f_xml2graph_armonia(cancion, index):
       
         #Instrumento
         part=song.parts[index]
-        print('Instrumento Seleccionado:'+str(part.partName))
+        #print('Instrumento Seleccionado:'+str(part.partName))
         voz = part.getElementsByClass(msc.stream.Measure)#todos los compases dela parte voz seleccionada
         notas=[]#lista que va a contener cada uno de las notas. Si dos o mas notas so n simultaneas comparten el mismo offset
         tiempos=[]#lista que va a contener a los tiempos de cada una de las notas en la lista notas medidos desde el principio segun la cantidad offset
