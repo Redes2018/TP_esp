@@ -365,9 +365,9 @@ def ql_2_fig(ql):
 
     figura='no está en la lista'
     
-    quarter_lengths=[1/8,0.5/3,0.25,1.0/3,0.5,2.0/3,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0]
-    figuras=['fusa','tresillo de semicorchea','semicorchea','tresillo de corchea','corchea','negra en tresillo','corchea puntillo','negra','negra semicorchea','negra puntillo','negra doble puntillo','blanca','blanca semicorchea','blanca corchea','blanca corchea puntillo','blanca puntillo','blanca puntillo semicorchea','blanca puntillo corchea','blanca puntillo corchea puntillo','redonda']
-    figuras_abrev=['f','ts','s','tc','c','tn','cp','n','ns','np','npp','b','bs','bc','bcp','bp','bps','bpc','bpcp','r']
+    quarter_lengths=[1/8,0.5/3,0.25,1.0/3,0.5,2.0/3,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0,6.0]
+    figuras=['fusa','tresillo de semicorchea','semicorchea','tresillo de corchea','corchea','negra en tresillo','corchea puntillo','negra','negra semicorchea','negra puntillo','negra doble puntillo','blanca','blanca semicorchea','blanca corchea','blanca corchea puntillo','blanca puntillo','blanca puntillo semicorchea','blanca puntillo corchea','blanca puntillo corchea puntillo','redonda','redonda puntillo']
+    figuras_abrev=['f','ts','s','tc','c','tn','cp','n','ns','np','npp','b','bs','bc','bcp','bp','bps','bpc','bpcp','r','rp']
     index=indice(quarter_lengths,ql)
     if type(index) is not str:
         figura=figuras_abrev[index]
@@ -2525,3 +2525,40 @@ def f_compose(G,H):
         return('los tipos de grafo no son compatibles')
     elif out==1:
         return(F)
+#--------------------------------------------------------------
+def f_cliques_histogramas(G):
+    #Recibe un grafo G dirigido y realiza un numero N de recableados
+    #En el grafico compara con el numero encontrado en la red real.
+    #Buscamos cliques con direccio y analizamos su frecuencia de aparicion:
+    cliques_redreal=f_transitivity_motifs(G)
+    print(cliques_redreal)
+    cliques_id=[cliques_redreal[i][0] for i in range(0,len(cliques_redreal))]
+    cliquesredrecableada=[]
+    cliques_redrecableada_recableos=[[cliques_redreal[0][1]],[cliques_redreal[1][1]],[cliques_redreal[2][1]],[cliques_redreal[3][1]],[cliques_redreal[4][1]]]
+    #Ahora hagamos recableados de la red y calculemos lo mismo:
+    N=10#numero de recableados
+    for n in range(0,N):
+        D=f_rewiring_directed(G)
+        if type(D)!=str: #nos aseguramos que el rewiring haya sido exitoso
+            cliquesredrecableada=f_transitivity_motifs(D)
+            for idclique in cliquesredrecableada:
+                for jdclique in cliques_redreal:
+                    if idclique[0]==jdclique[0]:
+                        indice=cliques_id.index(idclique[0])
+                        cliques_redrecableada_recableos[indice].append(idclique[1])
+
+    print(cliques_redrecableada_recableos)
+    colores=['blue','red','green','orange','purple']
+    #Hacemos los histogramas:
+    for h in range(0,len(cliques_redreal)):
+        plt.figure(h)
+        bins=np.arange(min(cliques_redrecableada_recableos[h])-1.5,max(cliques_redrecableada_recableos[h])+1.5,1)
+        plt.hist(cliques_redrecableada_recableos[h],bins=bins,color=colores[h],linewidth=1.5,edgecolor='black',label='Red recableada',alpha=0.8,normed=1,rwidth=0.5)
+        plt.axvline(cliques_redrecableada_recableos[h][0], c=colores[h],label='Red real') # Linea vertical en el valor de la red real
+        plt.xlabel('Frecuencia de aparicion')
+        plt.ylabel('Probabilidad')
+        plt.title('Clique'+str(cliques_id[h]).format(colores[h]))
+        plt.legend()
+        plt.show()
+    return()
+#------------------------------------------------------------------
