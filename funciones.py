@@ -38,8 +38,10 @@ import random
 # f_conect(G,H,cancion,indexes):
 # f_get_layers_position
 # f_graficar_2dy3d
-# random_walk_1_M(G,k)
+# f_random_walk_1_M(G,k)
+# f_list2seq
 # f_compose(G,H)
+# f_cliques_histogramas
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
