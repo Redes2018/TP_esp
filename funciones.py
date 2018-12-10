@@ -1071,6 +1071,18 @@ def f_armon(cancion, indexes):
                 Notas_compas=Notas_compas_ordenada
                 Frecuencias_compas=Frecuencias_compas_ordenada
                 Octavas_compas=Octavas_compas_ordenada
+                #Agrego un tiempo extra de finalizacion:
+                ultimotiempo=Tiempos_compas[len(Tiempos_compas)-1]
+                Tiempos_compas=list(Tiempos_compas)
+                Frecuencias_compas=list(Frecuencias_compas)
+                Octavas_compas=list(Octavas_compas_ordenada)
+                Tiempos_compas.append(ultimotiempo+0.5) #Esto es para que despues si estoy en el ultimo compas y hay un acorde que finaliza para que lo guarde a pesar de que no hay un tiempo posterior
+                Frecuencias_compas.append('0')
+                Octavas_compas.append('0')
+                Tiempos_compas=np.array(Tiempos_compas)
+                Frecuencias_compas=np.array(Frecuencias_compas)
+                Octavas_compas=np.array(Octavas_compas)
+                Notas_compas.append('Final del compas')
 
                 #-----------------------------------------------------------------------------------------------------------------------------      
                 #2) Ahora buscamos las armonias que existan en el compas actual:
@@ -1131,7 +1143,7 @@ def f_armon(cancion, indexes):
         
         #Agregamos los enlaces al grafo G e I:
         numero_enlace=-1
-        color_dict= {"2":"purple","3": "blue", "4":"red","5":"green"}
+        color_dict= {"2":"purple","3": "blue", "4":"red","5":"green","6":"yellow"}
         colores_edges=[]
         pesos_edges=[]
         Armonias_song_unicas=[list(i) for i in set(tuple(i) for i in Armonias_song)]
