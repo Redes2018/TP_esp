@@ -36,7 +36,8 @@ import random
 # f_simultaneidad(cancion, [indexi,indexj])
 # f_voice2nameabrev(instrumento_name)
 # f_conect(G,H,cancion,indexes):
-# f_get_layers_position
+# f_get_layers_2d_position
+# f_get_layers_3d_position
 # f_graficar_2dy3d
 # f_random_walk_1_M(G,k)
 # f_list2seq
@@ -2120,6 +2121,12 @@ def f_voicename2abrev(inst):
         return(abrev)
 #---------------------------------------------------------------------------
 def f_conect(G,H,cancion,indexes):
+    #Toma dos grafos, una cancion y los indices de las voces de esos grafos.
+    #Devuelve un grafo F donde los nodos estan etiquetados por la nota y el nombre
+    #de la voz. Este grafo contiene los intraenlaces de cada voz por separado
+    #y ademas interenlaces que corresponden a notas de difrentes instrumentos que
+    #se unieron cuando sonaron en simultaneo.
+    
     #Cancion
     song = msc.converter.parse(cancion) # Lee la cancion, queda un elemento stream.Score
     #Instrumentos
@@ -2158,7 +2165,12 @@ def f_conect(G,H,cancion,indexes):
  
     return(F)
 #---------------------------------------------------------------------------
-def get_layers_2d_position(G,base_pos,Nn,radio=50, proj_angle=45,number_of_layers=5):
+def get_layers_2d_position(G,base_pos,Nn,radio=50,number_of_layers=5):
+    #Toma un grafo, un diccionario de nodos con posiciones de partida en el plano 2d
+    #radio es el radio de una zona circular que rodea a cada layer en el 2d
+    #el numero de capas)
+    #Devuelve un nuevo diccionario con las nuevas posiciones del grafo 2d.
+    #El centro de la espiral se va moviendo una distancia dada por el vector (radio.cos(60),+-radio(sin(60))
     pos = base_pos
     Nold=0
     centro_espiral=np.array([-radio*(math.cos(60*np.pi/180)),radio*(math.sin(60*np.pi/180))])
@@ -2174,14 +2186,15 @@ def get_layers_2d_position(G,base_pos,Nn,radio=50, proj_angle=45,number_of_layer
         centro_espiral=centro_espiral+np.array([xcentro,ycentro])
         for j in range(N):
             numero_nodo=(Nold+j)
-            pos[numero_nodo][0] *= math.cos(proj_angle)
-            pos[numero_nodo][1] *= math.sin(proj_angle)
             pos[numero_nodo] = np.array([pos[numero_nodo][0]+centro_espiral[0], pos[numero_nodo][1]+centro_espiral[1]],dtype=np.float32)
         Nold=Nold+N
     return pos
 #---------------------------------------------------------------------------
 def get_layers_3d_position(G,base_pos,Nn,layer_vertical_shift=2,
                  layer_horizontal_shift=0.0, proj_angle=45,number_of_layers=5):
+    #Toma un grafo, un diccionario de nodos con posiciones de partida en el plano 2d
+    #la distancia entre capas deseada en x e y, el angulo de proyeccion y el numero de capas)
+    #Devuelve un nuevo diccionario con las nuevas posiciones del grafo 3d.
     pos = base_pos
     Nold=0
     for layer in range(0,number_of_layers):
@@ -2195,6 +2208,9 @@ def get_layers_3d_position(G,base_pos,Nn,layer_vertical_shift=2,
     return pos     
 #---------------------------------------------------------------------------
 def f_graficar_2dy3d(cancion,indexes):
+    #Toma una cancion y los indices de las voces a graficar
+    #Genera dos grafos uno en 2d y otro en 3d.
+    #Utiliza las funciones f_simultaneidad, get_layers_2d_position, get_layers_3d_position    
     
     #Cancion
     song_name=cancion
@@ -2410,8 +2426,8 @@ def f_graficar_2dy3d(cancion,indexes):
         plt.text(text_xposition,text_yposition,"{}".format(inst),fontproperties=font,transform=plt.gca().transAxes)
     plt.show()
 #---------------------------------------------------------------------------------
-#toma un grafo y la cantidad de los nuevos nodos. Devuelve una lista random con las notas
 def random_walk_1_M(G,c):
+    #toma un grafo y la cantidad de los nuevos nodos. Devuelve una lista random con las notas
     ls = []
     nodos=list(G.nodes())
     #Me armo un dict, con el key del nombre del nodo y una lista
@@ -2481,8 +2497,7 @@ def f_list2seq(lista_random,nombre,absoluto=False):
 
 #------------------------------------------------------------------------------------
 def f_compose(G,H):
-    #modelo puede ser: 'melodia','absoluto','ritmo','AD' y 'AU'
-    #recibe un grafo G y otro H y devuelve un grafo compuesto de ambos.
+    #Recibe un grafo G y otro H y devuelve un grafo compuesto de ambos.
     #El peso resultante es la suma de los pesos de los enlaces en comun si los hubiese.
     #Chequeamos los tipos de grafos:
     if type(G)!=type(H):
@@ -2540,7 +2555,7 @@ def f_compose(G,H):
     elif out==1:
         return(F)
 #--------------------------------------------------------------
-def f_cliques_histogramas(G):
+def f_cliques_histogramas(G,Numero_rewirings):
     #Recibe un grafo G dirigido y realiza un numero N de recableados
     #En el grafico compara con el numero encontrado en la red real.
     #Buscamos cliques con direccio y analizamos su frecuencia de aparicion:
@@ -2550,7 +2565,7 @@ def f_cliques_histogramas(G):
     cliquesredrecableada=[]
     cliques_redrecableada_recableos=[[cliques_redreal[0][1]],[cliques_redreal[1][1]],[cliques_redreal[2][1]],[cliques_redreal[3][1]],[cliques_redreal[4][1]]]
     #Ahora hagamos recableados de la red y calculemos lo mismo:
-    N=10#numero de recableados
+    N=Numero_rewirings#numero de recableados
     for n in range(0,N):
         D=f_rewiring_directed(G)
         if type(D)!=str: #nos aseguramos que el rewiring haya sido exitoso
