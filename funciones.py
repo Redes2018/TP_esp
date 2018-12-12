@@ -2462,32 +2462,61 @@ def random_walk_1_M(G,c):
         
     return(ls)
 #---------------------------------------------------------------------------------
-def f_list2seq(lista_random,nombre,absoluto=False):
+def f_list2seq(lista_random,nombre,absoluto=False,ritmos="nodos"):
     # Toma una lista de notas (generadas por la caminata al azar) y genera un stream
     # Guarda la partitura xml y el audio midi con el nombre asignado
+    #El ritmo puede ser el de los 'nodos' o 'fijo' fijo deja el ritmo en negra
     lista = [x.split("/") for x in lista_random]
     notas = [x.split("/") for x in lista_random]
     L = len(notas)
+    #creo el valor para dejar fijo el ritmo
+    quarter=msc.duration.Duration('quarter') #para ponerle otros valores 'whole','half','quarter','eighth', '16th', '32nd', '64th'
+    ritmo=np.zeros(L)
+    for i in range(L):
+        ritmo[i]=quarter.quarterLength
+    
     for elem in lista:
         if len(elem)==3:
             elem[1] = float(elem[1])/float(elem[2])
             del elem[2]
-    
+            
     if absoluto==False:
-        for i in range(L):
-            if lista[i][0]=='rest':
-                notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
-            else:
-                notas[i] = msc.note.Note(lista[i][0],quarterLength=float(lista[i][1]))
-    elif absoluto==True:
-        for i in range(L):
-            if lista[i][0]=='rest':
-                notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
-            else:
-                intervalo = msc.interval.Interval(int(lista[i][0]))
-                intervalo.noteStart = msc.note.Note('A4')
-                notas[i] = intervalo.noteEnd
-                notas[i].quarterLength=float(lista[i][1])
+        if ritmos == 'nodos':
+            for i in range(L):
+                if lista[i][0]=='rest':
+                    notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
+                else:
+                    notas[i] = msc.note.Note(lista[i][0],quarterLength=float(lista[i][1]))
+                    
+        elif ritmos == 'fijo':
+            for i in range(L):
+                if lista[i][0]=='rest':
+                    notas[i] = msc.note.Rest(quarterLength=float(ritmo[i]))
+                else:
+                    notas[i] = msc.note.Note(lista[i][0],quarterLength=float(ritmo[i]))
+    
+    
+    
+    elif absoluto==True: 
+        if ritmos == 'nodos':
+            for i in range(L):
+                if lista[i][0]=='rest':
+                    notas[i] = msc.note.Rest(quarterLength=float(lista[i][1]))
+                else:
+                    intervalo = msc.interval.Interval(int(lista[i][0]))
+                    intervalo.noteStart = msc.note.Note('A4')
+                    notas[i] = intervalo.noteEnd
+                    notas[i].quarterLength=float(lista[i][1])
+        
+        elif ritmos == 'fijo':
+            for i in range(L):
+                if lista[i][0]=='rest':
+                    notas[i] = msc.note.Rest(quarterLength=float(ritmo[i]))
+                else:
+                    intervalo = msc.interval.Interval(int(lista[i][0]))
+                    intervalo.noteStart = msc.note.Note('A4')
+                    notas[i] = intervalo.noteEnd
+                    notas[i].quarterLength=float(ritmo[i])
 
     cancion = msc.stream.Stream()
     for i in range(L):
