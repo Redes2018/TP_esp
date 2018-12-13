@@ -1299,8 +1299,8 @@ def f_grafo_armonias_directed(Armonias):
                                 if (str(Armonias[a]) in Gnodos)==False:
                                         numero_nodo=numero_nodo+1
                                         G.add_node(str(Armonias[a]))
-                                        Gnodos.append(str(Armonias[a]))
                                         color_nodos.append(color_dict[str(tamano_armonia)])
+                                Gnodos.append(str(Armonias[a]))
         
                 #Creo enlaces si encontro armonias del tamano buscado
                 if len(Gnodos)>0:
