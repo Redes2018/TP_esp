@@ -34,14 +34,16 @@ import random
 # f_graficar_armonias_directed(G, layout='random',labels=False)
 # f_simultaneidad(cancion, [indexi,indexj])
 # f_voice2nameabrev(instrumento_name)
-# f_conect(G,H,cancion,indexes):
+# f_conect(G,H,cancion,indexes)
 # f_get_layers_2d_position
 # f_get_layers_3d_position
 # f_graficar_2dy3d
 # f_random_walk_1_M(G,k)
 # f_list2seq
 # f_compose(G,H)
-# f_cliques_histogramas
+# f_cliques_histogramas(G,Numero_rewirings)
+# f_find_chords(cancion, indexes, chord_sizes)
+# f_chord_constructor(cancion)
 #-----------------------------------------------------------------------------------
 
 def f_xml2graph(cancion, nombre_parte=0,modelo='melodia'): 
@@ -1074,17 +1076,18 @@ def f_armon(cancion, indexes):
                 Frecuencias_compas=Frecuencias_compas_ordenada
                 Octavas_compas=Octavas_compas_ordenada
                 #Agrego un tiempo extra de finalizacion:
-                ultimotiempo=Tiempos_compas[len(Tiempos_compas)-1]
-                Tiempos_compas=list(Tiempos_compas)
-                Frecuencias_compas=list(Frecuencias_compas)
-                Octavas_compas=list(Octavas_compas_ordenada)
-                Tiempos_compas.append(ultimotiempo+0.5) #Esto es para que despues si estoy en el ultimo compas y hay un acorde que finaliza para que lo guarde a pesar de que no hay un tiempo posterior
-                Frecuencias_compas.append('0')
-                Octavas_compas.append('0')
-                Tiempos_compas=np.array(Tiempos_compas)
-                Frecuencias_compas=np.array(Frecuencias_compas)
-                Octavas_compas=np.array(Octavas_compas)
-                Notas_compas.append('Final del compas')
+                if numero_compas==(len(compases[0])-1): #si estoy en el ultimo compas solamente
+                    ultimotiempo=Tiempos_compas[len(Tiempos_compas)-1]
+                    Tiempos_compas=list(Tiempos_compas)
+                    Frecuencias_compas=list(Frecuencias_compas)
+                    Octavas_compas=list(Octavas_compas_ordenada)
+                    Tiempos_compas.append(ultimotiempo+0.5) #Esto es para que despues si estoy en el ultimo compas y hay un acorde que finaliza para que lo guarde a pesar de que no hay un tiempo posterior
+                    Frecuencias_compas.append('0')
+                    Octavas_compas.append('0')
+                    Tiempos_compas=np.array(Tiempos_compas)
+                    Frecuencias_compas=np.array(Frecuencias_compas)
+                    Octavas_compas=np.array(Octavas_compas)
+                    Notas_compas.append('Final del compas')
 
                 #-----------------------------------------------------------------------------------------------------------------------------      
                 #2) Ahora buscamos las armonias que existan en el compas actual:
@@ -2618,4 +2621,371 @@ def f_cliques_histogramas(G,Numero_rewirings):
         plt.legend()
         plt.show()
     return()
-#------------------------------------------------------------------
+#---------------------------------------------------------------------------------
+def f_find_chords(cancion, indexes, chord_sizes):
+    #Toma una cancion, una lista de indices de voces y una lista con los tamaños de acordes que se quieren encontrar.
+    #Devuelve un diccionario Acordes_compas, el cual es contiene como keys a los numero de compases, conteniendo a
+    #los acordes potenciales encontrados.
+    #Estrategia: encontrar para cada compas el acorde/s mas probables, en base a un conjunto de acordes obtenidos de la funcion f_chord_constructor
+    #            a los cuales se les calcula un cierto Peso_acorde. Este peso tiene en cuenta todas las notas que sonaron en el compas y ademas las armonias
+    #            encontradas con f_armon.
+    
+    song=msc.converter.parse(cancion)
+    
+    #Buscamos la tonalidad en el elemento de tipo key.KeySignature.
+    keys=[]
+    instrumento_index=0
+    voz=song.getElementsByClass(msc.stream.Part)[instrumento_index].getElementsByClass(msc.stream.Measure)
+    for i,el in enumerate(voz.flat):
+        if isinstance(el,msc.key.KeySignature):
+            keys.append(el)
+                
+    key=keys[0]
+    tonalidad_M=key.asKey('major')
+    tonalidad_m=key.asKey('minor')
+    escala=key.getScale('major')
+    notas=escala.pitches
+    print('Se encontraron '+str(len(keys))+' tonalidad/es')
+    print('Tonalidad:'+str(tonalidad_M)+'/'+str(tonalidad_m))
+    Notas_in_key=[tonalidad_M.pitches[i].name for i in range(0,len(tonalidad_M.pitches)-1)]
+    print('Notas en tonalidad:'+str(Notas_in_key))
+    Notas_not_inkey=[] #contendra las notas que aparecen en la partitura y en los acordes y que no estan en la tonalidad.
+    
+    #-----------------------------------------------------------------------------------------------------------------------------------------------------------
+    #0)Creamos el diccionario de acordes. Los acordes serán los de I,II,III,IV,V,VI Y VII grado de la tonalidad en la que estamos y los construimos
+    #  usando la funcion chord_constructor.
+    #-----------------------------------------------------------------------------------------------------------------------------------------------------------
+    Acordes={}
+    Acordes_compas={} #diccionario donde vamos a poner por numero de compas cual es el acorde potencial de ese compas.Un acorde potencial es el que al final del
+                      #analisis posee mayor peso.
+    
+                      #LOS PESOS LOS CALCULAREMOS DE LA SIGUIENTE MANERA:
+                      #Peso_acorde= (suma de los pesos de las notas que en el compas) + max(cantidad de notas presentes en alguna armonia del compas)
+                      #Peso_nota= (cantidad de veces que aparece la nota en el compas) + 1 o 0 (si la nota esta en una armonia)
+
+    Acordes=chord_constructor(cancion)
+    chord_symbols=Acordes.keys()
+    chord_tamanos=[]
+    for symbol in chord_symbols:
+        chord_tamanos.append(len(Acordes[symbol]['notas']))
+        chord_tamanos=list(np.unique(chord_tamanos))
+        #Agrego las notas de los acordes y que no estan en la tonalidad al vector Notas_not_inkey:
+        for n,nota in enumerate(Acordes[symbol]['notas']):
+            if (nota not in Notas_in_key) and (nota not in Notas_not_inkey):
+                Notas_not_inkey.append(nota)
+            
+    #------------------------------------------------------------------------------------------------------------------------------------------------------
+    #1) Corremos f_armon 1.1) y 1.2) con algunas modificaciones y luego en 1.3) hacemos el reconocimiento de acordes (todo esto se hace por compas)
+    #------------------------------------------------------------------------------------------------------------------------------------------------------
+    Armonias_song=[]
+    Tiempos_armonias_song=[]
+    Armonias_por_compas=[]
+    
+    #Instrumentos
+    instrumentos=[song.parts[indexes[i]].partName for i in range(0,len(indexes))]
+    print('Instrumentos Seleccionados:'+str(instrumentos))
+    partituras=[song.parts[indexes[i]] for i in range(0,len(indexes))]
+    compases=[partitura.getElementsByClass(msc.stream.Measure) for p,partitura in enumerate(partituras)]#todos los compases de las voces seleccionadas
+        
+    for numero_compas in range(0,len(compases[0])):
+            #print('compas'+str(numero_compas))
+            Notas_compas=[]   #lista de listas de notas por cada voz. Cada lista contiene las notas que esa voz fue tocando en en el compas actual
+            Tiempos_compas=[] #lista de listas de tiempos por cada voz. Cada lista contiene los tiempos en que sonaron esas notas en el compas actual.
+            Frecuencias_compas=[]
+            Octavas_compas=[]
+            Armonias=[]
+            Tiempos_armonias=[]
+            #-----------------------------------------------------------------------------------------------------------------------------------------------------
+            #1.1) Obtenemos todas las notas y los tiempos de ocurrencia de cada una de ellas en el compas actual y las guardamos en Notas_compas y en Tiempos_compas:
+            #-----------------------------------------------------------------------------------------------------------------------------------------------------
+            for inst in range(0,len(instrumentos)):
+                    compas=compases[inst][numero_compas]
+                    notas=[]
+                    tiempos=[]
+                    frecuencias=[]
+                    octavas=[]
+                    for i,el in enumerate(compas.flat):
+                            isChord=str(type(el))=='<class \'music21.chord.Chord\'>' #me fijo si es un elemento del tipo acorde chord.Chord
+                            if isinstance(el,msc.note.Note):#si es una nota
+                                    #nota_name=el.nameWithOctave
+                                    nota_name=el
+                                    notas.append(nota_name)
+                                    Notas_compas.append(nota_name)
+                                        
+                                    tiempo_nota=float(compas.offset+el.offset)
+                                    tiempos.append(tiempo_nota)
+                                    Tiempos_compas.append(tiempo_nota)
+                                        
+                                    frecuencias.append(el.pitch.frequency)
+                                    Frecuencias_compas.append(el.pitch.frequency)
+                                        
+                                    octavas.append(el.octave)
+                                    Octavas_compas.append(el.octave)
+
+                                    #Si la nota no esta en la tonalidad lo agrego a Notas_not_inkey
+                                    if (el.name not in Notas_in_key) and (el.name not in Notas_not_inkey):
+                                        Notas_not_inkey.append(el.name)
+                                        
+                            if isinstance(el,msc.chord.Chord) & isChord==True:#si es un acorde
+                                    for nc,noteChord in enumerate(el):
+                                            #nota_name=noteChord.nameWithOctave
+                                            nota_name=noteChord
+                                            notas.append(nota_name)
+                                            Notas_compas.append(nota_name)
+                                                
+                                            tiempo_nota=float(compas.offset)+float(el.offset)
+                                            tiempos.append(tiempo_nota)
+                                            Tiempos_compas.append(tiempo_nota)
+                                                
+                                            frecuencias.append(noteChord.pitch.frequency)
+                                            Frecuencias_compas.append(noteChord.pitch.frequency)
+                                                
+                                            octavas.append(noteChord.octave)
+                                            Octavas_compas.append(noteChord.octave)
+
+                                            #Si la nota no esta en la tonalidad lo agrego a Notas_not_inkey
+                                            if (noteChord.name not in Notas_in_key) and (noteChord.name not in Notas_not_inkey):
+                                                Notas_not_inkey.append(noteChord.name)
+                                                        
+            #Reordenamos las notas en armonia de menor tiempo a mayor tiempo:
+                                                
+            Tiempos_compas_ordenada=np.sort(Tiempos_compas)
+            Notas_compas_ordenada=[]
+            Frecuencias_compas_ordenada=[]
+            Octavas_compas_ordenada=[]
+                
+            Tiempos_compas_ordenada_unicos=list(np.unique(Tiempos_compas_ordenada))
+            for z,tiempo_ordenado in enumerate(Tiempos_compas_ordenada_unicos):
+                    #indice=Tiempos_compas.index(tiempo_ordenado)
+                    indices=[i for i, e in enumerate(Tiempos_compas) if e == tiempo_ordenado]
+                    for i,indice in enumerate(indices):
+                            Notas_compas_ordenada.append(Notas_compas[indice])
+                            Frecuencias_compas_ordenada.append(Frecuencias_compas[indice])
+                            Octavas_compas_ordenada.append(Octavas_compas[indice])
+                                
+            #Reescribo las variables,con el ordenamiento segun el vector de tiempos.
+            Tiempos_compas=Tiempos_compas_ordenada
+            Notas_compas=Notas_compas_ordenada
+            Frecuencias_compas=Frecuencias_compas_ordenada
+            Octavas_compas=Octavas_compas_ordenada
+
+            #Agrego un tiempo extra de finalizacion:
+            if numero_compas==(len(compases[0])-1): #si estoy en el ultimo compas solamente
+                ultimotiempo=Tiempos_compas[len(Tiempos_compas)-1]
+                Tiempos_compas=list(Tiempos_compas)
+                Frecuencias_compas=list(Frecuencias_compas)
+                Octavas_compas=list(Octavas_compas_ordenada)
+                Tiempos_compas.append(ultimotiempo+0.5) #Esto es para que despues si estoy en el ultimo compas y hay un acorde que finaliza para que lo guarde a pesar de que no hay un tiempo posterior
+                Frecuencias_compas.append('0')
+                Octavas_compas.append('0')
+                Tiempos_compas=np.array(Tiempos_compas)
+                Frecuencias_compas=np.array(Frecuencias_compas)
+                Octavas_compas=np.array(Octavas_compas)
+                Notas_compas.append('Final del compas')
+            
+            #-----------------------------------------------------------------------------------------------------------------------------      
+            #1.2) Ahora buscamos las armonias que existan en el compas actual:
+            #Antes de cambiar de compas buscamos armonias en Notas_compas y Tiempos_compas antes de vaciarlos y las guardamos en Armonias.
+            #-----------------------------------------------------------------------------------------------------------------------------
+        
+            #Recorremos el vector de tiempos y nos fijamos todas las notas que caen en un mismo tiempo y las guardamos en la lista armonia y esta la guardamos en la lista armonias:
+
+            if len(Notas_compas)!=0: #para que saltee aquellos compases donde todas las voces estan en silencio.
+                    armonia=[Notas_compas[0]] #al principio armonia tiene la primer nota del compas
+                    armonia_name=[Notas_compas[0].nameWithOctave]
+                    tiempo_actual=Tiempos_compas[0]
+                    tonos=[Frecuencias_compas[0]]#contendra las frecuencias de las notas en armonia, para ordenarlas de la mas grave a la mas aguda antes de guardar armonia
+                    octava=[Octavas_compas[0]]
+                        
+                    for t in range(1,len(Tiempos_compas)):
+                            tiempo_new=Tiempos_compas[t]
+                            if(tiempo_new-tiempo_actual)==0:#significa que seguimos en el mismo tiempo actual.
+                                    armonia.append(Notas_compas[t])
+                                    armonia_name.append(Notas_compas[t].nameWithOctave)
+                                    tonos.append(Frecuencias_compas[t])
+                                    octava.append(Octavas_compas[t])
+                                    tiempo_actual=Tiempos_compas[t]#actualizamos tiempos_old.
+                            else: #significa que cambiamos de tiempo.
+                                    tiempo_actual=Tiempos_compas[t]#actualizamos tiempos_old.
+                                    #reordenamos las notas en armonia de menor tono a mayor tono:
+                                    tonos_ordenados=np.sort(tonos)
+                                    octava_ordenada=[]
+                                    armonia_ordenada=[]
+                                    armonia_name_ordenada=[]
+                                    for f,tono in enumerate(tonos_ordenados):
+                                            indice=tonos.index(tono)
+                                            armonia_ordenada.append(armonia[indice])
+                                            armonia_name_ordenada.append(armonia_name[indice])
+                                            octava_ordenada.append(octava[indice])
+                                    if (len(armonia_name)>=2 and len(set(armonia_name))==len(armonia_name)):#consideramos armonia si son 2 o mas sonidos que suenan simultaneos y sin repetir.
+                                            Tiempos_armonias.append(Tiempos_compas[t-1])#es el tiempo en el que ocurrio esa armonia
+                                            Tiempos_armonias_song.append(Tiempos_compas[t-1])
+                                            Armonias.append(armonia_ordenada)#guardamos la armonia ya ordenada solo si la armonia tiene 2 o mas notas.
+                                            Armonias_song.append(armonia_ordenada)
+                                    armonia=[Notas_compas[t]]
+                                    if type(Notas_compas[t])!=str:
+                                        armonia_name=[Notas_compas[t].nameWithOctave]
+                                    tonos=[Frecuencias_compas[t]]
+                                    octava=[Octavas_compas[t]]
+            Armonias_por_compas.append(Armonias)
+            if numero_compas==32:
+                print(Armonias)
+            Notas_inandout_key=Notas_in_key+Notas_not_inkey
+            #-------------------------------------------------------------------------------------------------------------------------------
+            #1.3)Con las notas de cada compas y con las armonias detectadas en farmon
+            #buscaremos acordes potenciales por compas:
+            #-------------------------------------------------------------------------------------------------------------------------------
+            #1.3.A) Lo primero es tomar todas las notas que aparecen en el compas y calcular el peso de cada una de las notas:
+            #-------------------------------------------------------------------------------------------------------------------------------
+            Notas_hist_dict={} #diccionario que contendra las notas de la escala y un determinado Peso.
+                               #RECUERDO: Peso_nota=cantidad de veces que aparece la nota en el compas + 1 o 0 (si la nota esta en una armonia)
+            
+            #Notas en el compas:
+            Notas_nombre=[Notas_compas[i].name for i in range(0,len(Notas_compas)) if isinstance(Notas_compas[i],msc.note.Note)]
+            Notas_hist = [(x, Notas_nombre.count(x)) for x in Notas_inandout_key]
+            for i in range(0,len(Notas_hist)):
+                Notas_hist_dict[Notas_hist[i][0]]=Notas_hist[i][1]
+  
+            #Ahora de estas notas las que se hayan en Armonias_por_compas[numero_compas] les doy un peso extra, le sumamos 1 (ver Peso_nota mas arriba):
+            #Notas en armonias:
+            Notas_en_armonias=[]
+            for armonia in Armonias_por_compas[numero_compas]:
+                for nota in armonia:
+                    Notas_en_armonias.append(nota.name)
+            Notas_en_armonias=list(np.unique(Notas_en_armonias))
+            for nota in Notas_en_armonias:
+                Notas_hist_dict[nota]=Notas_hist_dict[nota]+1
+            #-------------------------------------------------------------------------------------------------------------------------------------
+            #1.3.B) Recorremos el diccionario de Acordes, nos fijamos sus notas, y calculamos el Peso
+            #   del acorde utilizando el diccionario de Notas_hist_dict
+            #   RECUERDO: Peso_acorde= (suma de los pesos de las notas que en el compas) + max(cantidad de notas presentes en alguna armonia del compas)
+            #-------------------------------------------------------------------------------------------------------------------------------------
+            #Recorremos los Acordes:
+            Peso_acorde_max={}
+            symbols_max={}
+            for tamano in chord_tamanos:
+                Peso_acorde_max[tamano]=0
+                symbols_max[tamano]=[]
+            
+            for symbol in chord_symbols:
+                Peso_acorde=0
+                for n in range(0,len(Acordes[symbol]['notas'])):
+                    if (Acordes[symbol]['notas'][n] in Notas_inandout_key):
+                        if Notas_hist_dict[Acordes[symbol]['notas'][n]]>0:
+                            Peso_acorde=Peso_acorde+Notas_hist_dict[Acordes[symbol]['notas'][n]]
+                        else:
+                            Peso_acorde=Peso_acorde-1 #si la nota del acorde tiene peso 0 en el histograma de notas (porque esa anota no aparecio en el compas) entonces ese acorde disminuye su peso en 1 unidad.
+
+                #Por ultimo al peso del acorde hay que sumarle la cantidad de notas que se hayan presentes en alguna de las armonias encontradas:
+                numero_de_notas_en_armonias=[0]
+                for num_armonia in range(0,len(Armonias_por_compas[numero_compas])):
+                        armonia=[]
+                        for i in range(0,len(Armonias_por_compas[numero_compas][num_armonia])):
+                            armonia.append(Armonias_por_compas[numero_compas][num_armonia][i].name)
+                        interseccion=set(Acordes[symbol]['notas']).intersection(set(armonia))
+                        numero_de_notas_en_armonias.append(len(interseccion))
+
+                Peso_acorde=Peso_acorde+max(numero_de_notas_en_armonias)
+                Acordes[symbol]['peso']=Peso_acorde
+
+                
+                #Me fijo si es mayor que el anterior del mismo tamano
+                tamano=len(Acordes[symbol]['notas'])
+                Peso_acorde_new=Peso_acorde
+                if Peso_acorde_new > Peso_acorde_max[tamano]:
+                    symbols_max[tamano]=[symbol]
+                    Peso_acorde_max[tamano]=Peso_acorde_new
+                elif (Peso_acorde_new-Peso_acorde_max[tamano])==0:
+                    symbols_max[tamano].append(symbol) #si hay empate lo agrego igual
+
+            #Actualizamos el diccionario
+            Acordes_potenciales=[]
+            for tamano in chord_tamanos:
+                for symbol in symbols_max[tamano]:
+                    found=0
+                    #Una vez que tenemos los acordes con Peso maximo NOS ASEGURAMOS de quedarnos con aquellos que tengan interseccion con las armonias:
+                    for num_armonia in range(0,len(Armonias_por_compas[numero_compas])):
+                        armonia=[]
+                        for i in range(0,len(Armonias_por_compas[numero_compas][num_armonia])):
+                            armonia.append(Armonias_por_compas[numero_compas][num_armonia][i].name)
+                        interseccion=set(Acordes[symbol]['notas']).intersection(set(armonia))
+                        if len(interseccion)>0:
+                            found=found+1
+                            Acordes_potenciales.append(Acordes[symbol])
+                            if found==1:
+                                break
+                    
+            Acordes_compas[numero_compas]=Acordes_potenciales
+
+            #Ponemos los pesos en 0 de nuevo:
+            for symbol in chord_symbols:
+                Acordes[symbol]['peso']=0
+              
+    #Terminamos de recorrer todos los compases
+    #Output:
+    #Imprimimos los acordes:
+    for compas in range(0,len(compases[0])):
+        print('compas'+str(compas))
+        print('armonias:'+str(Armonias_por_compas[compas]))
+        print('acordes posibles:')
+        for tamano in chord_sizes:
+            print(str('     ')+str(tamano)+'-note chords:')
+            for acorde in range(0,len(Acordes_compas[compas])):
+                if len(Acordes_compas[compas][acorde]['notas'])==tamano:
+                    print(str('        ')+str([Acordes_compas[compas][acorde]['grado'],Acordes_compas[compas][acorde]['nombre'],Acordes_compas[compas][acorde]['notas']]))
+   
+    return()
+#-----------------------------------------------------------------------------
+def f_chord_constructor(cancion):
+    #Toma como input una cancion.
+    #Se fija en que tonalidad esta la obra y extrae las notas de esa tonalidad.
+    #Para cada una de estas notas se construyen una cierta cantidad de tipos de acordes que se encuentran en chord_symbols
+    #Devuelve una lista de acordes calculados a partir de un cierto conjunto de chord_symbols el cual puede modificarse para tener mayor acordes.
+    #Todos estos acordes se encuentran en posicion fundamental(no invertidos), y la nota que se utilizo como nota de bajo fueron cada una de las
+    #notas que se hayan presentes en la tonalidad de la obra.
+    #Ej: si la obra esta en ReM, esta tonalidad tiene las notas D,E,F#,G,A,B,C# y se construyen acordes que tengan como nota de bajo estas notas.
+    #    para cada una de estas notas habran N acordes donde N=len(chord_symbols)
+    
+    song=msc.converter.parse(cancion)
+    instrumento_index=0
+    voz=song.getElementsByClass(msc.stream.Part)[instrumento_index].getElementsByClass(msc.stream.Measure)
+    
+    #Buscamos la tonalidad en el elemento de tipo key.KeySignature.
+    keys=[]
+    for i,el in enumerate(voz.flat):
+        if isinstance(el,msc.key.KeySignature):
+            keys.append(el)
+                
+    key=keys[0]
+    escala=key.getScale('major')
+    notas=escala.pitches
+    #print('Se encontraron '+str(len(keys))+' tonalidad/es')
+    #print('Tonalidad:'+str(key.asKey('major'))+'/'+str(key.asKey('minor')))
+    #print('Notas:'+str(notas))
+
+    #Construimos los acordes utilizando como nota fundamental del acorde las notas de la tonalidad.
+    Acordes={} #diccionario de acordes. El acorde se accede por su nombre: 'nombre nota'+'tipo acorde'
+    chord_symbols= ['', 'm', '+', 'dim', '7','7+','7b5','M7','M7#5','M7b5','m7','mM7','m7b5','dim7']
+    #La siguiente lista tiene mayor cantidad de acordes pero algunos eran medios raros y preferi descomentarlos.
+    #chord_symbols= ['', 'm', '+', 'dim', '7','sus4','7+','7b5','M7','M7#5','M7b5','m7','mM7','m7b5','dim7','6', 'm6', '9', 'Maj9', 'm9','11', 'Maj11', 'm11', '13','Maj13', 'm13', 'sus2','N6', 'add2']
+
+    for nota in notas:
+        for symbol in chord_symbols:
+            chord_symbol=nota.name+symbol
+            h = msc.harmony.ChordSymbol(chord_symbol)
+            h.key = key.asKey('major')
+            pitchNames = [str(p) for p in h.pitches]
+            chord_root=pitchNames[0]#porque se que son todos primera inversion (root=nota fundamental) despues se puede pensar como incorporar las inversiones
+            h.root(chord_root) #le digo al acorde qué root usar
+            notas_nombres=[str(p.name) for p in h.pitches]
+            Acordes[chord_symbol]={}
+            Acordes[chord_symbol]['pitches']=pitchNames
+            Acordes[chord_symbol]['notas']=notas_nombres
+            Acordes[chord_symbol]['simbolo']=chord_symbol
+            Acordes[chord_symbol]['nombre']=h.pitchedCommonName
+            Acordes[chord_symbol]['grado']=h.romanNumeral.figure
+            Acordes[chord_symbol]['inversion']=h.inversion()
+            Acordes[chord_symbol]['peso']=0
+                
+    return(Acordes)
+#------------------------------------------------------------------------------
